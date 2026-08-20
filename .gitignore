@@ -1,0 +1,15 @@
+# Secrets — ne jamais committer
+.env
+
+# Environnement virtuel Python
+venv/
+__pycache__/
+*.pyc
+
+# Données locales de test
+offres_test.json
+
+# Fichiers système
+.DS_Store
+offres_collectees.json
+*.json
