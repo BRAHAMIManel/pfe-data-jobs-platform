@@ -1,0 +1,48 @@
+{
+  "domaine": "M18 — systemes d'information et telecommunications",
+  "competences": {
+    "Langages": [
+      "Python", "Java", "JavaScript", "TypeScript", "C#", "C++", "PHP",
+      "Go", "Rust", "Ruby", "Scala", "Kotlin", "Swift", "R", "VBA", "COBOL"
+    ],
+    "Donnees": [
+      "SQL", "PL/SQL", "T-SQL", "NoSQL", "MongoDB", "PostgreSQL", "MySQL",
+      "Oracle", "SQL Server", "Redis", "Elasticsearch", "Cassandra",
+      "Snowflake", "BigQuery", "Redshift", "Spark", "PySpark", "Hadoop",
+      "Kafka", "Airflow", "dbt", "Talend", "SSIS", "Power BI", "Tableau",
+      "Qlik", "Looker", "Data Lake", "Data Warehouse", "ETL", "ELT"
+    ],
+    "Cloud et infrastructure": [
+      "AWS", "Azure", "GCP", "Google Cloud", "Docker", "Kubernetes",
+      "Terraform", "Ansible", "Jenkins", "GitLab CI", "GitHub Actions",
+      "VMware", "Hyper-V", "Proxmox", "Nutanix", "OpenStack"
+    ],
+    "Systemes": [
+      "Linux", "Windows Server", "Unix", "Debian", "Ubuntu", "Red Hat",
+      "CentOS", "Active Directory", "Microsoft 365", "Office 365",
+      "Exchange", "PowerShell", "Bash"
+    ],
+    "Reseaux": [
+      "TCP/IP", "VLAN", "VPN", "DNS", "DHCP", "BGP", "OSPF", "MPLS",
+      "Wi-Fi", "Cisco", "Fortinet", "Juniper", "Pare-feu", "Firewall",
+      "Load balancer", "Proxy", "Fibre optique"
+    ],
+    "Securite": [
+      "SIEM", "SOC", "Pentest", "ISO 27001", "RGPD", "PKI", "IAM",
+      "EDR", "Cybersecurite", "Analyse de risques", "EBIOS"
+    ],
+    "Web et frameworks": [
+      "React", "Angular", "Vue", "Node.js", "Django", "Flask", "FastAPI",
+      "Spring", "Symfony", "Laravel", ".NET", "ASP.NET", "HTML", "CSS",
+      "REST", "GraphQL", "API"
+    ],
+    "Methodes et outils": [
+      "Agile", "Scrum", "Kanban", "SAFe", "DevOps", "Git", "Jira",
+      "Confluence", "ITIL", "UML", "Merise", "CI/CD", "TDD"
+    ],
+    "Intelligence artificielle": [
+      "Machine Learning", "Deep Learning", "TensorFlow", "PyTorch",
+      "scikit-learn", "NLP", "LLM", "Computer Vision", "MLOps"
+    ]
+  }
+}
