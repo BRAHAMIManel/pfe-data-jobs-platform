@@ -3,13 +3,15 @@
 
 # Environnement virtuel Python
 venv/
+.venv/
 __pycache__/
 *.pyc
 
-# Données locales de test
-offres_test.json
+# Airflow
+logs/
+
+# Données locales de collecte (sorties, pas du code)
+offres_*.json
 
 # Fichiers système
 .DS_Store
-offres_collectees.json
-*.json

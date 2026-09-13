@@ -1,0 +1,183 @@
+x-airflow-common: &airflow-common
+  build:
+    context: .
+    dockerfile: Dockerfile
+  environment: &airflow-common-env
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres-airflow:5432/airflow
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
+    AIRFLOW__LOGGING__LOGGING_LEVEL: INFO
+    PYTHONPATH: /opt/airflow/scripts
+
+    # --- MinIO (Data Lake) ---
+    MINIO_ENDPOINT: http://minio:9000
+    MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
+    MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+    MINIO_BUCKET_RAW: raw
+    MINIO_BUCKET_SILVER: silver
+    MINIO_BUCKET_GOLD: gold
+
+    # --- API France Travail ---
+    FRANCE_TRAVAIL_CLIENT_ID: ${FRANCE_TRAVAIL_CLIENT_ID}
+    FRANCE_TRAVAIL_CLIENT_SECRET: ${FRANCE_TRAVAIL_CLIENT_SECRET}
+
+    # --- Entrepot (schema en etoile) ---
+    DWH_HOST: postgres-dwh
+    DWH_PORT: 5432
+    DWH_DB: ${DWH_DB}
+    DWH_USER: ${DWH_USER}
+    DWH_PASSWORD: ${DWH_PASSWORD}
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - ./logs:/opt/airflow/logs
+    - ./plugins:/opt/airflow/plugins
+    - ./scripts:/opt/airflow/scripts
+  user: "${AIRFLOW_UID:-50000}:0"
+  networks:
+    - pfe-net
+  depends_on:
+    postgres-airflow:
+      condition: service_healthy
+
+services:
+  # -------------------------------------------------------------
+  # Metabase technique d'Airflow (ne PAS y mettre les donnees metier)
+  # -------------------------------------------------------------
+  postgres-airflow:
+    image: postgres:15
+    container_name: pfe-postgres-airflow
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres-airflow-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pfe-net
+
+  # -------------------------------------------------------------
+  # Entrepot de donnees : schema en etoile (dim_* / fait_*)
+  # -------------------------------------------------------------
+  postgres-dwh:
+    image: postgres:15
+    container_name: pfe-postgres-dwh
+    environment:
+      POSTGRES_USER: ${DWH_USER}
+      POSTGRES_PASSWORD: ${DWH_PASSWORD}
+      POSTGRES_DB: ${DWH_DB}
+    ports:
+      - "5433:5432"   # accessible depuis DBeaver / dbt en local
+    volumes:
+      - postgres-dwh-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DWH_USER} -d ${DWH_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pfe-net
+
+  # -------------------------------------------------------------
+  # Data Lake S3-compatible
+  # Console web : http://localhost:9001
+  # -------------------------------------------------------------
+  minio:
+    image: quay.io/minio/minio:latest
+    container_name: pfe-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pfe-net
+
+  # Cree les 3 buckets de l'architecture medallion puis s'arrete
+  minio-init:
+    image: quay.io/minio/mc:latest
+    container_name: pfe-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 $${MINIO_ROOT_USER} $${MINIO_ROOT_PASSWORD} &&
+      mc mb --ignore-existing local/raw &&
+      mc mb --ignore-existing local/silver &&
+      mc mb --ignore-existing local/gold &&
+      echo '--- buckets raw / silver / gold prets ---' &&
+      exit 0
+      "
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    networks:
+      - pfe-net
+
+  # -------------------------------------------------------------
+  # Airflow : init (migration + compte admin), scheduler, webserver
+  # Interface : http://localhost:8080
+  # -------------------------------------------------------------
+  airflow-init:
+    <<: *airflow-common
+    container_name: pfe-airflow-init
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        airflow db migrate
+        airflow users create \
+          --username "${AIRFLOW_ADMIN_USER}" \
+          --password "${AIRFLOW_ADMIN_PASSWORD}" \
+          --firstname Manel --lastname Brahami \
+          --role Admin --email admin@pfe.local || true
+    restart: on-failure
+
+  airflow-scheduler:
+    <<: *airflow-common
+    container_name: pfe-airflow-scheduler
+    command: scheduler
+    restart: unless-stopped
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-webserver:
+    <<: *airflow-common
+    container_name: pfe-airflow-webserver
+    command: webserver
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+
+volumes:
+  postgres-airflow-data:
+  postgres-dwh-data:
+  minio-data:
+
+networks:
+  pfe-net:
+    driver: bridge
