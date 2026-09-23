@@ -7,6 +7,7 @@ puis charge dans postgres-dwh. Reexecutable sans creer de doublon.
 
 import logging
 from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 from airflow import DAG
 from airflow.operators.python import PythonOperator
@@ -132,7 +133,7 @@ def charger_entrepot(**context):
         competences=[(l, c) for l, c in competences.items()],
     )
 
-    aujourdhui = datetime.strptime(date_execution, "%Y-%m-%d").date()
+    aujourdhui = date.today()
     faits = [
         (
             o["id_offre"], o["code_rome"], o["code_insee"],

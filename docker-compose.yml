@@ -58,6 +58,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
     networks:
       - pfe-net
 
@@ -80,6 +81,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
     networks:
       - pfe-net
 
@@ -104,6 +106,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
     networks:
       - pfe-net
 
@@ -173,6 +176,32 @@ services:
       airflow-init:
         condition: service_completed_successfully
 
+  # -------------------------------------------------------------
+  # Application de restitution (Streamlit)
+  # Interface : http://localhost:8501
+  # -------------------------------------------------------------
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.streamlit
+    container_name: pfe-app
+    environment:
+      DWH_HOST: postgres-dwh
+      DWH_PORT: 5432
+      DWH_DB: ${DWH_DB}
+      DWH_USER: ${DWH_USER}
+      DWH_PASSWORD: ${DWH_PASSWORD}
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./app:/app
+    restart: unless-stopped
+    networks:
+      - pfe-net
+    depends_on:
+      postgres-dwh:
+        condition: service_healthy
+
 volumes:
   postgres-airflow-data:
   postgres-dwh-data:
@@ -182,4 +211,4 @@ networks:
   pfe-net:
     driver: bridge
     driver_opts:
-      com.docker.network.driver.mtu: "1400"
+      com.docker.network.driver.mtu: "1400" 
