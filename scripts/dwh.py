@@ -129,7 +129,8 @@ def charger_faits(faits):
             ON CONFLICT (id_offre) DO UPDATE SET
                 derniere_collecte = EXCLUDED.derniere_collecte,
                 jours_en_ligne = EXCLUDED.derniere_collecte
-                                 - fait_offre.premiere_collecte,
+                                 - COALESCE(fait_offre.date_creation,
+                                            fait_offre.premiere_collecte),
                 nombre_postes = EXCLUDED.nombre_postes,
                 manque_candidats = EXCLUDED.manque_candidats
         """, faits)

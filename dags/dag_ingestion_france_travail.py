@@ -106,7 +106,14 @@ def collecter_vers_raw(**context):
 
 
 def normaliser_vers_silver(**context):
-    """Fusionne les fichiers bruts, deduplique, filtre, ecrit dans silver."""
+    """Fusionne les fichiers bruts, deduplique, ecrit dans silver.
+
+    AUCUN filtre de fraicheur ici. Une offre encore en ligne apres 30 jours
+    est le signal de tension le plus fort qui soit : la filtrer reviendrait
+    a effacer precisement ce que le detecteur de niches doit mesurer.
+    La fraicheur est calculee pour information et appliquee au moment
+    des requetes, la ou elle a un sens (affichage au candidat).
+    """
     date_execution = context["ds"]
     chemins = context["ti"].xcom_pull(task_ids="collecte_vers_raw")
 
@@ -114,22 +121,21 @@ def normaliser_vers_silver(**context):
     for code_rome, chemin in chemins.items():
         offres = lire_json(BUCKET_RAW, chemin)
         for offre in offres:
-            # Trace de l'origine : une offre remonte sous plusieurs metiers.
             offre["_code_rome_collecte"] = code_rome
         toutes_les_offres.extend(offres)
 
     avant_dedup = len(toutes_les_offres)
     offres_uniques = dedupliquer(toutes_les_offres)
 
-    offres_filtrees, stats = filtrer_offres(
-        offres_uniques, jours_max=JOURS_MAX_ANCIENNETE
-    )
+    # Statistiques de fraicheur uniquement, les offres ne sont pas ecartees.
+    _, stats = filtrer_offres(offres_uniques, jours_max=JOURS_MAX_ANCIENNETE)
     stats["metiers_collectes"] = len(chemins)
     stats["collectees_brutes"] = avant_dedup
     stats["doublons_supprimes"] = avant_dedup - len(offres_uniques)
+    stats["ecrites_dans_silver"] = len(offres_uniques)
 
-    chemin = f"france_travail/date={date_execution}/offres_filtrees.json"
-    ecrire_json(BUCKET_SILVER, chemin, offres_filtrees)
+    chemin = f"france_travail/date={date_execution}/offres.json"
+    ecrire_json(BUCKET_SILVER, chemin, offres_uniques)
 
     logger.info("Statistiques : %s", stats)
     return stats
@@ -139,7 +145,7 @@ with DAG(
     dag_id="ingestion_france_travail",
     description="Collecte des offres France Travail (domaine ROME M18)",
     start_date=datetime(2026, 9, 1),
-    schedule="0 6 * * *",
+    schedule="0 11 * * *",
     catchup=False,
     default_args=default_args,
     tags=["pfe", "ingestion", "france_travail"],

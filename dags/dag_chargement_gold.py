@@ -45,7 +45,7 @@ def charger_entrepot(**context):
 
     offres = lire_json(
         BUCKET_SILVER,
-        f"france_travail/date={date_execution}/offres_filtrees.json",
+        f"france_travail/date={date_execution}/offres.json",
     )
     logger.info("%s offres lues depuis silver.", len(offres))
 
@@ -138,7 +138,10 @@ def charger_entrepot(**context):
             o["id_offre"], o["code_rome"], o["code_insee"],
             cles["entreprises"].get(o["cle_ent"]) if o["cle_ent"] else None,
             cles["contrats"].get(o["cle_contrat"]),
-            o["date_creation"], aujourdhui, aujourdhui, 0,
+            o["date_creation"], aujourdhui, aujourdhui,
+            # Duree depuis la publication, pas depuis notre premiere collecte :
+            # la mesure ne depend plus des jours ou le pipeline n'a pas tourne.
+            (aujourdhui - o["date_creation"]).days if o["date_creation"] else 0,
             o["nombre_postes"], o["manque_candidats"],
             o["salaire_min"], o["salaire_max"], o["salaire_periode"],
             o["intitule"], "france_travail",
@@ -173,7 +176,7 @@ with DAG(
     dag_id="chargement_gold",
     description="Chargement du schema en etoile depuis la couche silver",
     start_date=datetime(2026, 9, 1),
-    schedule="0 7 * * *",  # apres les ingestions
+    schedule="0 12 * * *",  # apres les ingestions
     catchup=False,
     default_args=default_args,
     tags=["pfe", "gold", "entrepot"],

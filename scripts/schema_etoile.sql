@@ -83,6 +83,25 @@ CREATE TABLE IF NOT EXISTS pont_offre_competence (
     PRIMARY KEY (id_offre, id_competence)
 );
 
+-- Agregat du detecteur de niches : un cliche par jour de calcul, afin de
+-- suivre l'evolution de la tension dans le temps et non seulement son
+-- etat courant.
+CREATE TABLE IF NOT EXISTS agg_tension (
+    date_calcul       DATE NOT NULL,
+    code_rome         VARCHAR(10) REFERENCES dim_metier(code_rome),
+    departement       VARCHAR(5),
+    nb_offres         INT NOT NULL,
+    nb_persistantes   INT NOT NULL,
+    taux_brut         NUMERIC(6, 4),
+    taux_reference    NUMERIC(6, 4),
+    score             NUMERIC(6, 4),
+    mediane_jours     NUMERIC(6, 1),
+    PRIMARY KEY (date_calcul, code_rome, departement)
+);
+
+CREATE INDEX IF NOT EXISTS idx_tension_score
+    ON agg_tension (date_calcul, score DESC);
+
 -- Index sur les axes d'analyse du detecteur de niches.
 CREATE INDEX IF NOT EXISTS idx_fait_rome_lieu
     ON fait_offre (code_rome, code_insee);
