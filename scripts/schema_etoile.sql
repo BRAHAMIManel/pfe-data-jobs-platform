@@ -77,6 +77,43 @@ CREATE TABLE IF NOT EXISTS fait_offre (
     source             VARCHAR(20) NOT NULL
 );
 
+-- ---------------------------------------------------------------
+-- Application finale : lien, experience, famille de poste, region
+-- ---------------------------------------------------------------
+
+-- Familles de postes proposees aux candidats (scripts/postes.json).
+CREATE TABLE IF NOT EXISTS dim_poste (
+    id_poste  VARCHAR(10) PRIMARY KEY,
+    libelle   TEXT NOT NULL
+);
+ALTER TABLE dim_poste ADD COLUMN IF NOT EXISTS categorie TEXT;
+
+-- Colonnes ajoutees a une base existante : sans effet si deja presentes.
+ALTER TABLE fait_offre ADD COLUMN IF NOT EXISTS url_offre TEXT;
+ALTER TABLE fait_offre ADD COLUMN IF NOT EXISTS experience_annees NUMERIC(4, 1);
+ALTER TABLE fait_offre ADD COLUMN IF NOT EXISTS id_poste VARCHAR(10)
+    REFERENCES dim_poste(id_poste);
+
+CREATE INDEX IF NOT EXISTS idx_fait_poste ON fait_offre (id_poste);
+
+-- Offres mal codees, sans rapport avec l'informatique (scripts/hors_perimetre.json).
+-- Elles sont gardees mais exclues de toutes les analyses.
+ALTER TABLE fait_offre ADD COLUMN IF NOT EXISTS hors_perimetre BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- Referentiel geographique (scripts/regions.json) : departement -> region.
+CREATE TABLE IF NOT EXISTS ref_region (
+    code_region   VARCHAR(3) PRIMARY KEY,
+    nom           TEXT NOT NULL,
+    abrev         VARCHAR(5) NOT NULL,
+    grille_ligne  INT,
+    grille_col    INT
+);
+
+CREATE TABLE IF NOT EXISTS ref_departement (
+    departement   VARCHAR(5) PRIMARY KEY,
+    code_region   VARCHAR(3) NOT NULL REFERENCES ref_region(code_region)
+);
+
 CREATE TABLE IF NOT EXISTS pont_offre_competence (
     id_offre       VARCHAR(20) REFERENCES fait_offre(id_offre) ON DELETE CASCADE,
     id_competence  INT REFERENCES dim_competence(id_competence),
@@ -109,3 +146,24 @@ CREATE INDEX IF NOT EXISTS idx_fait_derniere_collecte
     ON fait_offre (derniere_collecte);
 CREATE INDEX IF NOT EXISTS idx_pont_competence
     ON pont_offre_competence (id_competence);
+
+-- Agregat de l'application finale : indice de penurie par region et par
+-- ville, sur toutes les offres. Un cliche par jour, pour suivre l'evolution.
+-- La partie personnelle du score (adequation au CV, zone, niveau) se
+-- calcule dans l'application, car elle depend de chaque candidat.
+CREATE TABLE IF NOT EXISTS agg_opportunite (
+    date_calcul        DATE NOT NULL,
+    niveau             VARCHAR(10) NOT NULL,   -- 'region' ou 'ville'
+    code               TEXT NOT NULL,          -- code region, ou ville|departement
+    libelle            TEXT NOT NULL,
+    code_region        VARCHAR(3),
+    nb_offres          INT NOT NULL,
+    nb_persistantes    INT NOT NULL,           -- en ligne depuis plus de 30 jours
+    nb_manque          INT NOT NULL,           -- signalees manque de candidats
+    nb_en_ligne        INT NOT NULL,           -- vues a la derniere collecte
+    nb_recentes        INT NOT NULL,           -- en ligne et publiees depuis 14 jours ou moins
+    mediane_jours      NUMERIC(6, 1),
+    indice_penurie     NUMERIC(6, 4),          -- 1,00 = moyenne nationale
+    fiabilite          VARCHAR(10) NOT NULL,   -- fiable / indicatif / fragile
+    PRIMARY KEY (date_calcul, niveau, code)
+);

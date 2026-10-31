@@ -2,47 +2,257 @@
   "domaine": "M18 — systemes d'information et telecommunications",
   "competences": {
     "Langages": [
-      "Python", "Java", "JavaScript", "TypeScript", "C#", "C++", "PHP",
-      "Go", "Rust", "Ruby", "Scala", "Kotlin", "Swift", "R", "VBA", "COBOL"
+      "Python",
+      "Java",
+      "JavaScript",
+      "TypeScript",
+      "C#",
+      "C++",
+      "PHP",
+      "Go",
+      "Rust",
+      "Ruby",
+      "Scala",
+      "Kotlin",
+      "Swift",
+      "R",
+      "VBA",
+      "COBOL"
     ],
     "Donnees": [
-      "SQL", "PL/SQL", "T-SQL", "NoSQL", "MongoDB", "PostgreSQL", "MySQL",
-      "Oracle", "SQL Server", "Redis", "Elasticsearch", "Cassandra",
-      "Snowflake", "BigQuery", "Redshift", "Spark", "PySpark", "Hadoop",
-      "Kafka", "Airflow", "dbt", "Talend", "SSIS", "Power BI", "Tableau",
-      "Qlik", "Looker", "Data Lake", "Data Warehouse", "ETL", "ELT"
+      "SQL",
+      "PL/SQL",
+      "T-SQL",
+      "NoSQL",
+      "MongoDB",
+      "PostgreSQL",
+      "MySQL",
+      "Oracle",
+      "SQL Server",
+      "Redis",
+      "Elasticsearch",
+      "Cassandra",
+      "Snowflake",
+      "BigQuery",
+      "Redshift",
+      "Spark",
+      "PySpark",
+      "Hadoop",
+      "Kafka",
+      "Airflow",
+      "dbt",
+      "Talend",
+      "SSIS",
+      "Power BI",
+      "Tableau",
+      "Qlik",
+      "Looker",
+      "Data Lake",
+      "Data Warehouse",
+      "ETL",
+      "ELT",
+      "Databricks",
+      "DAX",
+      "Data Visualisation",
+      "SQLite"
     ],
     "Cloud et infrastructure": [
-      "AWS", "Azure", "GCP", "Google Cloud", "Docker", "Kubernetes",
-      "Terraform", "Ansible", "Jenkins", "GitLab CI", "GitHub Actions",
-      "VMware", "Hyper-V", "Proxmox", "Nutanix", "OpenStack"
+      "AWS",
+      "Azure",
+      "GCP",
+      "Google Cloud",
+      "Docker",
+      "Kubernetes",
+      "Terraform",
+      "Ansible",
+      "Jenkins",
+      "GitLab CI",
+      "GitHub Actions",
+      "VMware",
+      "Hyper-V",
+      "Proxmox",
+      "Nutanix",
+      "OpenStack"
     ],
     "Systemes": [
-      "Linux", "Windows Server", "Unix", "Debian", "Ubuntu", "Red Hat",
-      "CentOS", "Active Directory", "Microsoft 365", "Office 365",
-      "Exchange", "PowerShell", "Bash"
+      "Linux",
+      "Windows Server",
+      "Unix",
+      "Debian",
+      "Ubuntu",
+      "Red Hat",
+      "CentOS",
+      "Active Directory",
+      "Microsoft 365",
+      "Office 365",
+      "Exchange",
+      "PowerShell",
+      "Bash"
     ],
     "Reseaux": [
-      "TCP/IP", "VLAN", "VPN", "DNS", "DHCP", "BGP", "OSPF", "MPLS",
-      "Wi-Fi", "Cisco", "Fortinet", "Juniper", "Pare-feu", "Firewall",
-      "Load balancer", "Proxy", "Fibre optique"
+      "TCP/IP",
+      "VLAN",
+      "VPN",
+      "DNS",
+      "DHCP",
+      "BGP",
+      "OSPF",
+      "MPLS",
+      "Wi-Fi",
+      "Cisco",
+      "Fortinet",
+      "Juniper",
+      "Pare-feu",
+      "Firewall",
+      "Load balancer",
+      "Proxy",
+      "Fibre optique"
     ],
     "Securite": [
-      "SIEM", "SOC", "Pentest", "ISO 27001", "RGPD", "PKI", "IAM",
-      "EDR", "Cybersecurite", "Analyse de risques", "EBIOS"
+      "SIEM",
+      "SOC",
+      "Pentest",
+      "ISO 27001",
+      "RGPD",
+      "PKI",
+      "IAM",
+      "EDR",
+      "Cybersecurite",
+      "Analyse de risques",
+      "EBIOS"
     ],
     "Web et frameworks": [
-      "React", "Angular", "Vue", "Node.js", "Django", "Flask", "FastAPI",
-      "Spring", "Symfony", "Laravel", ".NET", "ASP.NET", "HTML", "CSS",
-      "REST", "GraphQL", "API"
+      "React",
+      "Angular",
+      "Vue",
+      "Node.js",
+      "Django",
+      "Flask",
+      "FastAPI",
+      "Spring",
+      "Symfony",
+      "Laravel",
+      ".NET",
+      "ASP.NET",
+      "HTML",
+      "CSS",
+      "REST",
+      "GraphQL",
+      "API",
+      "WordPress",
+      "Bootstrap"
     ],
     "Methodes et outils": [
-      "Agile", "Scrum", "Kanban", "SAFe", "DevOps", "Git", "Jira",
-      "Confluence", "ITIL", "UML", "Merise", "CI/CD", "TDD"
+      "Agile",
+      "Scrum",
+      "Kanban",
+      "SAFe",
+      "DevOps",
+      "Git",
+      "Jira",
+      "Confluence",
+      "ITIL",
+      "UML",
+      "Merise",
+      "CI/CD",
+      "TDD",
+      "GitHub"
     ],
     "Intelligence artificielle": [
-      "Machine Learning", "Deep Learning", "TensorFlow", "PyTorch",
-      "scikit-learn", "NLP", "LLM", "Computer Vision", "MLOps"
+      "Machine Learning",
+      "Deep Learning",
+      "TensorFlow",
+      "PyTorch",
+      "scikit-learn",
+      "NLP",
+      "LLM",
+      "Computer Vision",
+      "MLOps"
+    ],
+    "Bureautique et analyse": [
+      "Excel",
+      "Google Analytics",
+      "Salesforce",
+      "SAP",
+      "Looker Studio",
+      "Notion"
+    ]
+  },
+  "variantes": {
+    "_description": "Autres ecritures d'une meme competence. Elles sont reconnues mais enregistrees sous le libelle principal.",
+    "Power BI": [
+      "PowerBI",
+      "Power-BI"
+    ],
+    "PostgreSQL": [
+      "Postgres",
+      "PostgresSQL"
+    ],
+    "JavaScript": [
+      "Javascript",
+      "JS"
+    ],
+    "TypeScript": [
+      "Typescript"
+    ],
+    "Node.js": [
+      "NodeJS",
+      "Node JS"
+    ],
+    "Kubernetes": [
+      "K8s"
+    ],
+    "GCP": [
+      "Google Cloud Platform"
+    ],
+    "scikit-learn": [
+      "sklearn",
+      "scikit learn"
+    ],
+    "Machine Learning": [
+      "apprentissage automatique"
+    ],
+    "Excel": [
+      "Microsoft Excel",
+      "MS Excel"
+    ],
+    "SQL Server": [
+      "MSSQL",
+      "MS SQL"
+    ],
+    "Data Visualisation": [
+      "Dataviz",
+      "Data Visualization",
+      "Datavisualisation"
+    ],
+    "CI/CD": [
+      "CICD",
+      "CI CD"
+    ],
+    "Microsoft 365": [
+      "M365"
+    ],
+    "Google Analytics": [
+      "GA4"
+    ],
+    "Looker Studio": [
+      "Google Data Studio",
+      "Data Studio"
+    ],
+    "Cybersecurite": [
+      "Cyber securite",
+      "Cybersecurity"
+    ],
+    "Data Warehouse": [
+      "Datawarehouse",
+      "entrepot de donnees"
+    ],
+    "Data Lake": [
+      "Datalake"
+    ],
+    "WordPress": [
+      "Wordpress",
+      "Word Press"
     ]
   }
 }

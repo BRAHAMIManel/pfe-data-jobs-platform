@@ -6,7 +6,6 @@ puis charge dans postgres-dwh. Reexecutable sans creer de doublon.
 """
 
 import logging
-from datetime import datetime, timedelta
 from datetime import date, datetime, timedelta
 
 from airflow import DAG
@@ -16,14 +15,22 @@ from dwh import (
     charger_dimensions,
     charger_faits,
     charger_pont_competences,
+    charger_referentiels,
+    completer_offres_anciennes,
     creer_schema,
 )
 from storage import lire_json
 from transformation import (
+    URL_OFFRE_FRANCE_TRAVAIL,
+    charger_postes,
+    classer_poste,
+    est_hors_perimetre,
     extraire_competences,
     parser_date,
+    parser_experience,
     parser_lieu,
     parser_salaire,
+    url_offre,
 )
 
 logger = logging.getLogger(__name__)
@@ -39,6 +46,9 @@ default_args = {
 
 def initialiser_schema(**_):
     creer_schema()
+    charger_referentiels(
+        [(f["id"], f["libelle"], f["categorie"]) for f in charger_postes()]
+    )
 
 
 def charger_entrepot(**context):
@@ -118,6 +128,9 @@ def charger_entrepot(**context):
             "salaire_max": salaire_max,
             "salaire_periode": periode,
             "intitule": offre.get("intitule"),
+            "url_offre": url_offre(offre),
+            "experience_annees": parser_experience(offre),
+            "id_poste": classer_poste(offre.get("intitule")),
         })
 
     cles = charger_dimensions(
@@ -146,6 +159,7 @@ def charger_entrepot(**context):
             o["nombre_postes"], o["manque_candidats"],
             o["salaire_min"], o["salaire_max"], o["salaire_periode"],
             o["intitule"], "france_travail",
+            o["url_offre"], o["experience_annees"], o["id_poste"],
         )
         for o in lignes_offres
     ]
@@ -159,6 +173,11 @@ def charger_entrepot(**context):
     ]
     nb_liens = charger_pont_competences(liens)
 
+    # Toutes les offres de l'entrepot : lien, poste et hors perimetre a jour.
+    anciennes = completer_offres_anciennes(
+        classer_poste, URL_OFFRE_FRANCE_TRAVAIL.format(""), est_hors_perimetre
+    )
+
     stats = {
         "offres_lues": len(offres),
         "offres_nouvelles": nouvelles,
@@ -168,6 +187,11 @@ def charger_entrepot(**context):
         "entreprises": len(entreprises),
         "competences_distinctes": len(competences),
         "liens_competences": nb_liens,
+        "offres_avec_famille_de_poste": sum(1 for o in lignes_offres if o["id_poste"]),
+        "offres_avec_experience": sum(
+            1 for o in lignes_offres if o["experience_annees"] is not None
+        ),
+        **anciennes,
     }
     logger.info("Chargement termine : %s", stats)
     return stats

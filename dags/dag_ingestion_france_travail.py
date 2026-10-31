@@ -24,7 +24,9 @@ from storage import ecrire_json, lire_json
 
 logger = logging.getLogger(__name__)
 
-TOTAL_PAR_ROME = 2000
+# None = toutes les offres du metier. Au-dela de la limite de l'API
+# (3 150 par recherche), la collecte est decoupee par region.
+TOTAL_PAR_ROME = None
 
 BUCKET_RAW = "raw"
 BUCKET_SILVER = "silver"

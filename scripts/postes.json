@@ -1,0 +1,507 @@
+{
+  "_description": "Postes proposes dans l'application, ranges par categorie de l'informatique. Une offre est rangee dans le PREMIER poste (ordre de 'familles') dont un motif apparait dans son intitule, en minuscules et sans accents : l'ordre compte, du plus precis au plus general ('chef de projet data' avant 'data engineer', 'developpeur web' avant 'developpeur'). Les competences typiques servent a proposer des postes a partir d'un CV. Dans 'categories', 'postes' donne l'ordre d'affichage dans l'application. 'motifs_secours' : motifs essayes seulement si aucun poste n'a ete trouve avec les motifs principaux (par exemple 'consultant' seul, qui ne doit pas capter 'consultant cybersecurite').",
+  "categories": [
+    {
+      "id": "dev",
+      "libelle": "Développement",
+      "postes": [
+        "web",
+        "logiciel",
+        "dp",
+        "mobile"
+      ]
+    },
+    {
+      "id": "data",
+      "libelle": "Data & IA",
+      "postes": [
+        "de",
+        "da",
+        "ds",
+        "dm",
+        "dba"
+      ]
+    },
+    {
+      "id": "infra",
+      "libelle": "Infrastructure, cloud & réseaux",
+      "postes": [
+        "devops",
+        "sys",
+        "support"
+      ]
+    },
+    {
+      "id": "cyber",
+      "libelle": "Cybersécurité",
+      "postes": [
+        "secu"
+      ]
+    },
+    {
+      "id": "projet",
+      "libelle": "Gestion de projet & conseil",
+      "postes": [
+        "cp",
+        "cd",
+        "amoa"
+      ]
+    }
+  ],
+  "familles": [
+    {
+      "id": "cp",
+      "categorie": "projet",
+      "libelle": "Chef de projet / Product Owner",
+      "motifs_intitule": [
+        "chef de projet",
+        "chef de produit",
+        "product owner",
+        "product manager",
+        "project manager",
+        "scrum master",
+        "\\bpmo\\b",
+        "responsable de projet",
+        "directeur de projet",
+        "pilote de projet"
+      ],
+      "competences_typiques": [
+        "Agile",
+        "Scrum",
+        "Jira",
+        "Confluence",
+        "Kanban",
+        "SAFe",
+        "ITIL",
+        "Excel"
+      ]
+    },
+    {
+      "id": "dm",
+      "categorie": "data",
+      "libelle": "Data manager / gouvernance des données",
+      "motifs_intitule": [
+        "data manager",
+        "data governance",
+        "gouvernance (des |de la )?donnee",
+        "data steward",
+        "data quality",
+        "qualite (des |de la )?donnee",
+        "data owner",
+        "chief data",
+        "\\bmdm\\b",
+        "referentiels? de donnees",
+        "master data",
+        "data office"
+      ],
+      "competences_typiques": [
+        "SQL",
+        "Excel",
+        "Power BI",
+        "RGPD",
+        "Data Warehouse",
+        "Agile",
+        "Jira",
+        "Data Lake"
+      ]
+    },
+    {
+      "id": "cd",
+      "categorie": "projet",
+      "libelle": "Consultant data / digital",
+      "motifs_intitule": [
+        "consultant.*(data|donnee|\\bbi\\b|decisionnel|business intelligence|analytics|digital|numerique)"
+      ],
+      "competences_typiques": [
+        "SQL",
+        "Power BI",
+        "Python",
+        "Excel",
+        "Agile",
+        "Jira",
+        "Google Analytics",
+        "Tableau",
+        "Salesforce"
+      ]
+    },
+    {
+      "id": "amoa",
+      "categorie": "projet",
+      "libelle": "Consultant fonctionnel / AMOA",
+      "motifs_intitule": [
+        "consultant.*(fonctionnel|amoa|\\bmoa\\b|erp|sap|crm)",
+        "\\bamoa\\b",
+        "maitrise d'ouvrage",
+        "business analyst",
+        "analyste fonctionnel"
+      ],
+      "competences_typiques": [
+        "UML",
+        "SQL",
+        "SAP",
+        "Salesforce",
+        "Agile",
+        "Jira",
+        "Excel",
+        "Merise"
+      ],
+      "motifs_secours": [
+        "consultant",
+        "consultante"
+      ]
+    },
+    {
+      "id": "ds",
+      "categorie": "data",
+      "libelle": "Data Scientist / IA",
+      "motifs_intitule": [
+        "data scien",
+        "machine learning",
+        "\\bml\\b",
+        "intelligence artificielle",
+        "\\bia\\b",
+        "\\bai\\b",
+        "deep learning",
+        "\\bnlp\\b",
+        "\\bllm\\b",
+        "mlops"
+      ],
+      "competences_typiques": [
+        "Python",
+        "Machine Learning",
+        "scikit-learn",
+        "TensorFlow",
+        "PyTorch",
+        "SQL",
+        "Deep Learning",
+        "NLP",
+        "LLM",
+        "MLOps"
+      ]
+    },
+    {
+      "id": "de",
+      "categorie": "data",
+      "libelle": "Data Engineer",
+      "motifs_intitule": [
+        "data engineer",
+        "ingenieur (big )?data",
+        "ingenieur (des |de )?donnees",
+        "big data",
+        "analytics engineer",
+        "\\betl\\b",
+        "developpeu(r|se) (big )?data",
+        "developpeu(r|se) etl",
+        "dataops",
+        "data ops",
+        "architecte (big )?data",
+        "data architect",
+        "ingenieur data"
+      ],
+      "competences_typiques": [
+        "Python",
+        "SQL",
+        "Spark",
+        "PySpark",
+        "Airflow",
+        "Kafka",
+        "dbt",
+        "Docker",
+        "PostgreSQL",
+        "Git",
+        "AWS",
+        "Azure",
+        "GCP",
+        "Databricks",
+        "Snowflake",
+        "ETL"
+      ]
+    },
+    {
+      "id": "da",
+      "categorie": "data",
+      "libelle": "Data Analyst / BI",
+      "motifs_intitule": [
+        "data analyst",
+        "analyste (de |des )?donnees",
+        "analyste bi",
+        "\\bbi\\b",
+        "business intelligence",
+        "decisionnel",
+        "power ?bi",
+        "analyste data",
+        "data analyste",
+        "reporting"
+      ],
+      "competences_typiques": [
+        "SQL",
+        "Power BI",
+        "Excel",
+        "Python",
+        "Tableau",
+        "DAX",
+        "Looker",
+        "Qlik",
+        "PostgreSQL",
+        "Google Analytics"
+      ]
+    },
+    {
+      "id": "dba",
+      "categorie": "data",
+      "libelle": "Administrateur bases de données",
+      "motifs_intitule": [
+        "\\bdba\\b",
+        "administrat(eur|rice) (de |des )?bases? de donnees",
+        "database administrator",
+        "bases? de donnees"
+      ],
+      "competences_typiques": [
+        "SQL",
+        "Oracle",
+        "PostgreSQL",
+        "SQL Server",
+        "MySQL",
+        "PL/SQL",
+        "Linux"
+      ]
+    },
+    {
+      "id": "secu",
+      "categorie": "cyber",
+      "libelle": "Analyste / ingénieur cybersécurité",
+      "motifs_intitule": [
+        "cyber",
+        "securite",
+        "\\bsoc\\b",
+        "pentest",
+        "\\brssi\\b",
+        "\\bsecops\\b",
+        "\\biam\\b",
+        "auditeur"
+      ],
+      "competences_typiques": [
+        "SIEM",
+        "SOC",
+        "Pentest",
+        "ISO 27001",
+        "Firewall",
+        "IAM",
+        "EDR",
+        "Linux",
+        "RGPD",
+        "Cybersecurite",
+        "Analyse de risques"
+      ]
+    },
+    {
+      "id": "devops",
+      "categorie": "infra",
+      "libelle": "Ingénieur DevOps / Cloud",
+      "motifs_intitule": [
+        "devops",
+        "\\bsre\\b",
+        "cloud",
+        "kubernetes",
+        "ingenieur plateforme",
+        "platform engineer",
+        "ci ?/ ?cd"
+      ],
+      "competences_typiques": [
+        "Docker",
+        "Kubernetes",
+        "Terraform",
+        "AWS",
+        "Azure",
+        "GCP",
+        "Linux",
+        "CI/CD",
+        "Ansible",
+        "Jenkins",
+        "Git",
+        "GitLab CI"
+      ]
+    },
+    {
+      "id": "mobile",
+      "categorie": "dev",
+      "libelle": "Développeur mobile",
+      "motifs_intitule": [
+        "mobile",
+        "android",
+        "\\bios\\b",
+        "flutter",
+        "react native"
+      ],
+      "competences_typiques": [
+        "Kotlin",
+        "Swift",
+        "Java",
+        "JavaScript",
+        "TypeScript",
+        "Git",
+        "API",
+        "REST"
+      ]
+    },
+    {
+      "id": "web",
+      "categorie": "dev",
+      "libelle": "Développeur web / full stack",
+      "motifs_intitule": [
+        "\\bweb\\b",
+        "full ?stack",
+        "front ?end",
+        "back ?end",
+        "frontend",
+        "backend",
+        "integrat(eur|rice)",
+        "wordpress",
+        "\\bphp\\b",
+        "symfony",
+        "laravel",
+        "react",
+        "angular",
+        "\\bvue",
+        "node",
+        "javascript",
+        "typescript"
+      ],
+      "competences_typiques": [
+        "HTML",
+        "CSS",
+        "JavaScript",
+        "TypeScript",
+        "PHP",
+        "React",
+        "Angular",
+        "Vue",
+        "Node.js",
+        "Symfony",
+        "Laravel",
+        "WordPress",
+        "MySQL",
+        "SQL",
+        "Git",
+        "API"
+      ]
+    },
+    {
+      "id": "dp",
+      "categorie": "dev",
+      "libelle": "Développeur Python",
+      "motifs_intitule": [
+        "python",
+        "django",
+        "fastapi"
+      ],
+      "competences_typiques": [
+        "Python",
+        "Django",
+        "FastAPI",
+        "Flask",
+        "PostgreSQL",
+        "Docker",
+        "Git",
+        "Linux",
+        "API",
+        "REST"
+      ]
+    },
+    {
+      "id": "sys",
+      "categorie": "infra",
+      "libelle": "Administrateur systèmes & réseaux",
+      "motifs_intitule": [
+        "administrat(eur|rice).*(systeme|reseau|infrastructure|informatique|serveur)",
+        "ingenieur.*(systeme|reseau|infrastructure|telecom)",
+        "technicien.*(systeme|reseau|infrastructure|telecom)",
+        "architecte.*(reseau|infrastructure|systeme)",
+        "reseau",
+        "telecom",
+        "infrastructure",
+        "systemes? et reseaux?",
+        "sysadmin"
+      ],
+      "competences_typiques": [
+        "Linux",
+        "Windows Server",
+        "Active Directory",
+        "VMware",
+        "Cisco",
+        "TCP/IP",
+        "VLAN",
+        "PowerShell",
+        "DNS",
+        "DHCP",
+        "Fortinet"
+      ],
+      "motifs_secours": [
+        "responsable informatique",
+        "informaticien",
+        "technicien informatique",
+        "responsable (du )?service informatique"
+      ]
+    },
+    {
+      "id": "support",
+      "categorie": "infra",
+      "libelle": "Technicien support / helpdesk",
+      "motifs_intitule": [
+        "technicien",
+        "support",
+        "helpdesk",
+        "help desk",
+        "service desk",
+        "assistant(e)? informatique",
+        "gestionnaire de parc",
+        "deploiement",
+        "poste de travail",
+        "proximite"
+      ],
+      "competences_typiques": [
+        "Windows Server",
+        "Active Directory",
+        "Microsoft 365",
+        "Office 365",
+        "ITIL",
+        "PowerShell",
+        "Exchange"
+      ]
+    },
+    {
+      "id": "logiciel",
+      "categorie": "dev",
+      "libelle": "Développeur logiciel / applicatif",
+      "motifs_intitule": [
+        "developpeu(r|se)",
+        "ingenieur(e)? (en )?(logiciel|developpement|etudes)",
+        "software",
+        "concepteur",
+        "analyste programmeur",
+        "programmeu(r|se)",
+        "\\bjava\\b",
+        "\\.net",
+        "\\bc#",
+        "c\\+\\+",
+        "architecte (logiciel|applicatif|technique|solution)",
+        "tech lead",
+        "lead dev"
+      ],
+      "competences_typiques": [
+        "Java",
+        "C#",
+        ".NET",
+        "C++",
+        "Spring",
+        "SQL",
+        "Git",
+        "UML",
+        "Agile",
+        "API",
+        "REST",
+        "Python"
+      ]
+    }
+  ]
+}

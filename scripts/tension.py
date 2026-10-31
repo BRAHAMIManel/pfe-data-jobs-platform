@@ -33,6 +33,7 @@ WITH reference AS (
     SELECT COUNT(*) FILTER (WHERE jours_en_ligne > %(seuil)s)::numeric
            / NULLIF(COUNT(*), 0) AS taux
     FROM fait_offre
+    WHERE NOT hors_perimetre
 ),
 base AS (
     SELECT f.code_rome,
@@ -45,6 +46,7 @@ base AS (
     JOIN dim_lieu l ON l.code_insee = f.code_insee
     WHERE l.departement IS NOT NULL
       AND f.code_rome IS NOT NULL
+      AND NOT f.hors_perimetre
     GROUP BY 1, 2
 )
 INSERT INTO agg_tension (
@@ -120,5 +122,164 @@ def top_niches(date_calcul, minimum_offres=5, limite=15):
             LIMIT %s
             """,
             (date_calcul, minimum_offres, limite),
+        )
+        return cur.fetchall()
+
+
+# ---------------------------------------------------------------------------
+# Application finale : indice de penurie par region et par ville
+# ---------------------------------------------------------------------------
+#
+# Deux signaux de penurie, chacun lisse vers sa moyenne nationale :
+#   - persistance : offre encore en ligne apres SEUIL_JOURS ;
+#   - manque      : offre signalee par France Travail comme manquant de
+#                   candidats (champ offresManqueCandidats).
+# indice = moyenne des deux rapports a la moyenne : 1,00 = marche moyen,
+# 1,30 = 30 % de signaux de penurie de plus que la moyenne nationale.
+
+JOURS_RECENTS = 14   # offres affichees par defaut au candidat
+SEUIL_FIABLE = 30    # offres, au-dela : resultat fiable
+SEUIL_INDICATIF = 10 # offres, en dessous : resultat fragile
+EVENEMENTS_MINIMUM = 3
+
+REQUETE_OPPORTUNITE = """
+WITH base AS (
+    SELECT f.jours_en_ligne,
+           COALESCE(f.manque_candidats, FALSE) AS manque,
+           f.derniere_collecte,
+           f.date_creation,
+           l.ville_normalisee,
+           l.departement,
+           d.code_region,
+           r.nom AS nom_region
+    FROM fait_offre f
+    JOIN dim_lieu l ON l.code_insee = f.code_insee
+    JOIN ref_departement d ON d.departement = l.departement
+    JOIN ref_region r ON r.code_region = d.code_region
+    WHERE NOT f.hors_perimetre
+),
+maj AS (SELECT MAX(derniere_collecte) AS jour FROM fait_offre),
+taux AS (
+    SELECT AVG((jours_en_ligne > %(seuil)s)::int)::numeric AS taux_persistance,
+           AVG(COALESCE(manque_candidats, FALSE)::int)::numeric AS taux_manque
+    FROM fait_offre
+    WHERE NOT hors_perimetre
+),
+-- Poids de la moyenne nationale : au moins %(lissage)s offres, et assez pour
+-- contenir %(evenements)s signaux attendus (un signal rare ne doit pas
+-- s'envoler parce qu'une ville de 2 offres en compte un).
+reference AS (
+    SELECT taux_persistance, taux_manque,
+           GREATEST(%(lissage)s, %(evenements)s / NULLIF(taux_persistance, 0)) AS poids_p,
+           GREATEST(%(lissage)s, %(evenements)s / NULLIF(taux_manque, 0)) AS poids_m
+    FROM taux
+),
+territoires AS (
+    SELECT 'region' AS niveau, b.code_region AS code, b.nom_region AS libelle,
+           b.code_region,
+           COUNT(*) AS nb_offres,
+           COUNT(*) FILTER (WHERE b.jours_en_ligne > %(seuil)s) AS nb_persistantes,
+           COUNT(*) FILTER (WHERE b.manque) AS nb_manque,
+           COUNT(*) FILTER (WHERE b.derniere_collecte = m.jour) AS nb_en_ligne,
+           COUNT(*) FILTER (WHERE b.derniere_collecte = m.jour
+                            AND b.date_creation >= m.jour - %(recents)s) AS nb_recentes,
+           PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY b.jours_en_ligne) AS mediane
+    FROM base b CROSS JOIN maj m
+    GROUP BY b.code_region, b.nom_region
+    UNION ALL
+    SELECT 'ville', b.ville_normalisee || '|' || b.departement,
+           INITCAP(b.ville_normalisee), MIN(b.code_region),
+           COUNT(*),
+           COUNT(*) FILTER (WHERE b.jours_en_ligne > %(seuil)s),
+           COUNT(*) FILTER (WHERE b.manque),
+           COUNT(*) FILTER (WHERE b.derniere_collecte = m.jour),
+           COUNT(*) FILTER (WHERE b.derniere_collecte = m.jour
+                            AND b.date_creation >= m.jour - %(recents)s),
+           PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY b.jours_en_ligne)
+    FROM base b CROSS JOIN maj m
+    WHERE b.ville_normalisee IS NOT NULL
+    GROUP BY b.ville_normalisee, b.departement
+)
+INSERT INTO agg_opportunite (
+    date_calcul, niveau, code, libelle, code_region, nb_offres,
+    nb_persistantes, nb_manque, nb_en_ligne, nb_recentes, mediane_jours,
+    indice_penurie, fiabilite
+)
+SELECT %(date_calcul)s, t.niveau, t.code, t.libelle, t.code_region, t.nb_offres,
+       t.nb_persistantes, t.nb_manque, t.nb_en_ligne, t.nb_recentes,
+       ROUND(t.mediane::numeric, 1),
+       ROUND(CASE
+           -- Aucune offre signalee "manque de candidats" : un seul signal.
+           WHEN r.taux_manque = 0 THEN
+               (t.nb_persistantes + r.poids_p * r.taux_persistance)
+               / (t.nb_offres + r.poids_p) / NULLIF(r.taux_persistance, 0)
+           ELSE (
+               (t.nb_persistantes + r.poids_p * r.taux_persistance)
+               / (t.nb_offres + r.poids_p) / NULLIF(r.taux_persistance, 0)
+             + (t.nb_manque + r.poids_m * r.taux_manque)
+               / (t.nb_offres + r.poids_m) / r.taux_manque
+           ) / 2
+       END, 4),
+       CASE WHEN t.nb_offres >= %(fiable)s THEN 'fiable'
+            WHEN t.nb_offres >= %(indicatif)s THEN 'indicatif'
+            ELSE 'fragile' END
+FROM territoires t CROSS JOIN reference r
+ON CONFLICT (date_calcul, niveau, code) DO UPDATE SET
+    libelle = EXCLUDED.libelle,
+    code_region = EXCLUDED.code_region,
+    nb_offres = EXCLUDED.nb_offres,
+    nb_persistantes = EXCLUDED.nb_persistantes,
+    nb_manque = EXCLUDED.nb_manque,
+    nb_en_ligne = EXCLUDED.nb_en_ligne,
+    nb_recentes = EXCLUDED.nb_recentes,
+    mediane_jours = EXCLUDED.mediane_jours,
+    indice_penurie = EXCLUDED.indice_penurie,
+    fiabilite = EXCLUDED.fiabilite
+"""
+
+
+def calculer_opportunite(date_calcul):
+    """Recalcule l'indice de penurie par region et par ville."""
+    parametres = {
+        "seuil": SEUIL_JOURS,
+        "lissage": LISSAGE,
+        "recents": JOURS_RECENTS,
+        "fiable": SEUIL_FIABLE,
+        "indicatif": SEUIL_INDICATIF,
+        "evenements": EVENEMENTS_MINIMUM,
+        "date_calcul": date_calcul,
+    }
+
+    with connexion() as conn, conn.cursor() as cur:
+        cur.execute(REQUETE_OPPORTUNITE, parametres)
+        cur.execute(
+            """
+            SELECT niveau, COUNT(*), COUNT(*) FILTER (WHERE fiabilite = 'fiable')
+            FROM agg_opportunite WHERE date_calcul = %s GROUP BY niveau
+            """,
+            (date_calcul,),
+        )
+        stats = {
+            f"{niveau}s": {"total": total, "fiables": fiables}
+            for niveau, total, fiables in cur.fetchall()
+        }
+
+    logger.info("Indice de penurie : %s", stats)
+    return stats
+
+
+def top_territoires(date_calcul, niveau="ville", limite=10):
+    """Territoires les plus en penurie, pour controle dans les logs."""
+    with connexion() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT libelle, nb_offres, nb_persistantes, nb_manque,
+                   nb_recentes, indice_penurie, fiabilite
+            FROM agg_opportunite
+            WHERE date_calcul = %s AND niveau = %s AND fiabilite <> 'fragile'
+            ORDER BY indice_penurie DESC
+            LIMIT %s
+            """,
+            (date_calcul, niveau, limite),
         )
         return cur.fetchall()

@@ -1,0 +1,18 @@
+# Charte graphique : palette bordeaux, claire.
+[theme]
+base = "light"
+primaryColor = "#7A1F3D"
+backgroundColor = "#FBF7F6"
+secondaryBackgroundColor = "#F4E9EB"
+textColor = "#2A1418"
+font = "sans serif"
+
+[server]
+headless = true
+maxUploadSize = 5   # Mo : largement assez pour un CV
+
+[client]
+toolbarMode = "minimal"
+
+[browser]
+gatherUsageStats = false

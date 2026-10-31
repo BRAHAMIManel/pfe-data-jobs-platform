@@ -5,6 +5,7 @@ Toutes les ecritures sont idempotentes : rejouer un run ne cree pas de
 doublon. C'est ce qui permet le suivi de duree de presence des offres.
 """
 
+import json
 import logging
 import os
 
@@ -13,7 +14,9 @@ from psycopg2.extras import execute_values
 
 logger = logging.getLogger(__name__)
 
-CHEMIN_SCHEMA = "/opt/airflow/scripts/schema_etoile.sql"
+DOSSIER_SCRIPTS = os.path.dirname(os.path.abspath(__file__))
+CHEMIN_SCHEMA = os.path.join(DOSSIER_SCRIPTS, "schema_etoile.sql")
+CHEMIN_REGIONS = os.path.join(DOSSIER_SCRIPTS, "regions.json")
 
 
 def connexion():
@@ -124,9 +127,13 @@ def charger_faits(faits):
                 id_offre, code_rome, code_insee, id_entreprise, id_contrat,
                 date_creation, premiere_collecte, derniere_collecte,
                 jours_en_ligne, nombre_postes, manque_candidats,
-                salaire_min, salaire_max, salaire_periode, intitule, source
+                salaire_min, salaire_max, salaire_periode, intitule, source,
+                url_offre, experience_annees, id_poste
             ) VALUES %s
             ON CONFLICT (id_offre) DO UPDATE SET
+                url_offre = EXCLUDED.url_offre,
+                experience_annees = EXCLUDED.experience_annees,
+                id_poste = EXCLUDED.id_poste,
                 derniere_collecte = EXCLUDED.derniere_collecte,
                 jours_en_ligne = EXCLUDED.derniere_collecte
                                  - COALESCE(fait_offre.date_creation,
@@ -153,3 +160,87 @@ def charger_pont_competences(liens):
             VALUES %s ON CONFLICT DO NOTHING
         """, liens)
     return len(liens)
+
+def charger_referentiels(familles):
+    """Charge les regions et les familles de postes. Idempotent.
+
+    familles : [(id_poste, libelle, categorie), ...] depuis scripts/postes.json.
+    """
+    with open(CHEMIN_REGIONS, encoding="utf-8") as fichier:
+        geo = json.load(fichier)
+
+    regions = [
+        (code, r["nom"], r["abrev"],
+         r["grille"][0] if r["grille"] else None,
+         r["grille"][1] if r["grille"] else None)
+        for code, r in geo["regions"].items()
+    ]
+    departements = list(geo["departements"].items())
+
+    with connexion() as conn, conn.cursor() as cur:
+        execute_values(cur, """
+            INSERT INTO ref_region (code_region, nom, abrev, grille_ligne, grille_col)
+            VALUES %s ON CONFLICT (code_region) DO UPDATE SET
+                nom = EXCLUDED.nom, abrev = EXCLUDED.abrev,
+                grille_ligne = EXCLUDED.grille_ligne, grille_col = EXCLUDED.grille_col
+        """, regions)
+        execute_values(cur, """
+            INSERT INTO ref_departement (departement, code_region) VALUES %s
+            ON CONFLICT (departement) DO UPDATE SET code_region = EXCLUDED.code_region
+        """, departements)
+        execute_values(cur, """
+            INSERT INTO dim_poste (id_poste, libelle, categorie) VALUES %s
+            ON CONFLICT (id_poste) DO UPDATE SET
+                libelle = EXCLUDED.libelle, categorie = EXCLUDED.categorie
+        """, familles)
+
+    logger.info(
+        "Referentiels : %s regions, %s departements, %s familles de postes.",
+        len(regions), len(departements), len(familles),
+    )
+
+
+def completer_offres_anciennes(classer_poste, url_france_travail, est_hors_perimetre):
+    """Complete et reclasse les offres deja presentes dans l'entrepot.
+
+    Les offres encore en ligne sont mises a jour par le chargement du jour.
+    Celles qui ont disparu n'y repassent jamais : on leur ajoute ici leur
+    lien, et on reclasse TOUTES les offres dans les postes, pour que la
+    moindre modification de postes.json s'applique aussi a l'historique.
+    """
+    with connexion() as conn, conn.cursor() as cur:
+        cur.execute("""
+            UPDATE fait_offre SET url_offre = %s || id_offre
+            WHERE url_offre IS NULL AND source = 'france_travail'
+        """, (url_france_travail,))
+        liens = cur.rowcount
+
+        cur.execute(
+            "SELECT id_offre, intitule, id_poste, hors_perimetre FROM fait_offre"
+        )
+        a_classer = []
+        for id_offre, intitule, poste_actuel, hors_actuel in cur.fetchall():
+            poste = classer_poste(intitule)
+            hors = est_hors_perimetre(intitule)
+            if poste != poste_actuel or hors != hors_actuel:
+                a_classer.append((poste, hors, id_offre))
+        if a_classer:
+            execute_values(cur, """
+                UPDATE fait_offre f
+                SET id_poste = v.id_poste, hors_perimetre = v.hors
+                FROM (VALUES %s) AS v(id_poste, hors, id_offre)
+                WHERE f.id_offre = v.id_offre
+            """, a_classer)
+        cur.execute("SELECT COUNT(*) FROM fait_offre WHERE hors_perimetre")
+        hors_perimetre = cur.fetchone()[0]
+
+    logger.info(
+        "Offres completees : %s liens ajoutes, %s offres (re)classees, "
+        "%s offres hors perimetre (exclues des analyses).",
+        liens, len(a_classer), hors_perimetre,
+    )
+    return {
+        "liens_ajoutes": liens,
+        "offres_reclassees": len(a_classer),
+        "offres_hors_perimetre": hors_perimetre,
+    }

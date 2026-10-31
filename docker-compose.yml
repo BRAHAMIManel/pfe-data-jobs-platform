@@ -195,6 +195,8 @@ services:
       - "8501:8501"
     volumes:
       - ./app:/app
+      # Lecture du CV et dictionnaire de competences partages avec Airflow
+      - ./scripts:/scripts:ro
     restart: unless-stopped
     networks:
       - pfe-net
@@ -211,4 +213,4 @@ networks:
   pfe-net:
     driver: bridge
     driver_opts:
-      com.docker.network.driver.mtu: "1400" 
+      com.docker.network.driver.mtu: "1400"

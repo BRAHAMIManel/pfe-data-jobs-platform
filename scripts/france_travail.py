@@ -8,8 +8,10 @@ officiel. Quelques metiers hors informatique du domaine sont exclus
 explicitement (voir METIERS_HORS_PERIMETRE).
 """
 
+import json
 import logging
 import os
+import re
 import time
 from datetime import datetime, timedelta, timezone
 
@@ -42,8 +44,22 @@ METIERS_HORS_PERIMETRE = {
 }
 
 
-def get_access_token():
-    """Recupere un jeton OAuth2 (client_credentials)."""
+# Le jeton France Travail expire au bout d'environ 25 minutes, alors qu'une
+# collecte complete peut durer davantage : on le garde en memoire et on le
+# renouvelle avant son expiration, ou des qu'un appel repond HTTP 401.
+_JETON = {"valeur": None, "expire_a": 0.0}
+MARGE_EXPIRATION = 120  # secondes
+
+
+def get_access_token(forcer=False):
+    """Recupere un jeton OAuth2 (client_credentials), renouvele si besoin."""
+    if (
+        not forcer
+        and _JETON["valeur"]
+        and time.time() < _JETON["expire_a"] - MARGE_EXPIRATION
+    ):
+        return _JETON["valeur"]
+
     client_id = os.getenv("FRANCE_TRAVAIL_CLIENT_ID")
     client_secret = os.getenv("FRANCE_TRAVAIL_CLIENT_SECRET")
 
@@ -63,8 +79,11 @@ def get_access_token():
 
     response = requests.post(TOKEN_URL, data=payload, headers=headers, timeout=30)
     response.raise_for_status()
+    contenu = response.json()
+    _JETON["valeur"] = contenu["access_token"]
+    _JETON["expire_a"] = time.time() + int(contenu.get("expires_in", 1499))
     logger.info("Authentification France Travail reussie.")
-    return response.json()["access_token"]
+    return _JETON["valeur"]
 
 
 def lister_metiers_du_domaine(token, prefixe=PREFIXE_DOMAINE):
@@ -95,69 +114,118 @@ def lister_metiers_du_domaine(token, prefixe=PREFIXE_DOMAINE):
     return metiers
 
 
-def get_offres_par_rome(
-    token,
-    code_rome,
-    total_souhaite=500,
-    taille_page=150,
-    max_tentatives=3,
-):
-    """Pagine sur un code ROME et renvoie la liste brute des offres."""
-    headers = {"Authorization": f"Bearer {token}"}
-    toutes_les_offres = []
-    debut = 0
+# L'API ne renvoie jamais plus de 3 150 offres pour une meme recherche
+# (dernier indice de "range" : 3149). Les metiers les plus demandes
+# (developpement, support...) en comptent bien plus : sans decoupage, la
+# collecte s'arreterait aux 3 150 premieres et ignorerait le reste.
+# Quand un metier depasse la limite, on le collecte region par region,
+# puis departement par departement si une region depasse encore.
+LIMITE_API = 3150
+MOTIF_TOTAL = re.compile(r"/(\d+)")
 
-    while len(toutes_les_offres) < total_souhaite:
-        fin = min(debut + taille_page - 1, total_souhaite - 1)
+with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "regions.json"),
+          encoding="utf-8") as _f:
+    _GEO = json.load(_f)
+REGIONS = sorted(_GEO["regions"])
+DEPARTEMENTS_PAR_REGION = {
+    code: sorted(d for d, r in _GEO["departements"].items() if r == code)
+    for code in REGIONS
+}
 
-        # Garde-fou : sans cela, un metier qui renvoie moins d'offres que
-        # demande produit un intervalle inverse (ex. 600-499) et un HTTP 400.
+
+def _collecter(code_rome, filtres, plafond, taille_page=150, max_tentatives=3):
+    """Pagine une recherche. Renvoie (offres, total annonce par l'API)."""
+    offres_trouvees, total, debut = [], None, 0
+    interrompu = False
+
+    while len(offres_trouvees) < plafond:
+        fin = min(debut + taille_page - 1, plafond - 1)
         if fin < debut:
             break
 
         taille_demandee = fin - debut + 1
-        params = {"codeROME": code_rome, "range": f"{debut}-{fin}"}
+        params = {"codeROME": code_rome, "range": f"{debut}-{fin}", **filtres}
 
-        offres = None
+        page = None
         for tentative in range(1, max_tentatives + 1):
+            headers = {"Authorization": f"Bearer {get_access_token()}"}
             response = requests.get(
                 OFFRES_URL, headers=headers, params=params, timeout=60
             )
 
             if response.status_code == 204:  # aucun resultat
-                return toutes_les_offres
+                return offres_trouvees, total or len(offres_trouvees)
 
             if response.status_code in (200, 206):
-                offres = response.json().get("resultats", [])
+                page = response.json().get("resultats", [])
+                trouve = MOTIF_TOTAL.search(response.headers.get("Content-Range", ""))
+                if trouve:
+                    total = int(trouve.group(1))
                 break
 
             logger.warning(
-                "ROME %s page %s-%s : HTTP %s (tentative %s/%s) — %s",
-                code_rome, debut, fin, response.status_code,
+                "ROME %s %s page %s-%s : HTTP %s (tentative %s/%s) — %s",
+                code_rome, filtres or "", debut, fin, response.status_code,
                 tentative, max_tentatives, response.text[:300],
             )
-            if response.status_code < 500:
+            if response.status_code == 401:
+                get_access_token(forcer=True)  # jeton expire
+                continue
+            if response.status_code < 500 and response.status_code != 429:
                 break
             time.sleep(2 * tentative)
 
-        if not offres:
+        if page is None:
+            interrompu = True
             break
 
-        toutes_les_offres.extend(offres)
-
-        # Page incomplete = fin du gisement, inutile d'en demander une autre.
-        if len(offres) < taille_demandee:
-            return toutes_les_offres
-
+        offres_trouvees.extend(page)
+        if not page or len(page) < taille_demandee:
+            break
         debut += taille_page
         time.sleep(0.3)
 
-    # On sort par le plafond : le metier a probablement plus d'offres.
-    logger.warning(
-        "ROME %s : plafond de %s atteint, resultat probablement tronque.",
-        code_rome, total_souhaite,
-    )
-    return toutes_les_offres[:total_souhaite]
+    if interrompu:
+        logger.warning(
+            "ROME %s %s : collecte interrompue apres erreurs, %s offres gardees.",
+            code_rome, filtres or "", len(offres_trouvees),
+        )
+    return offres_trouvees, total if total is not None else len(offres_trouvees)
+
+
+def get_offres_par_rome(token, code_rome, total_souhaite=None, **_):
+    """Toutes les offres d'un metier ROME, decoupees si besoin.
+
+    `token` est conserve pour compatibilite : le jeton courant est relu a
+    chaque appel, ce qui permet de le renouveler en cours de collecte.
+    `total_souhaite` (None = tout) borne le nombre d'offres renvoyees.
+    """
+    plafond = min(total_souhaite or LIMITE_API, LIMITE_API)
+    offres, total = _collecter(code_rome, {}, plafond)
+
+    if total > LIMITE_API and (total_souhaite is None or total_souhaite > LIMITE_API):
+        logger.info(
+            "ROME %s : %s offres annoncees, au-dela de la limite de l'API. "
+            "Collecte region par region.", code_rome, total,
+        )
+        offres = []
+        for region in REGIONS:
+            partie, total_region = _collecter(code_rome, {"region": region}, LIMITE_API)
+            if total_region > LIMITE_API:
+                partie = []
+                for departement in DEPARTEMENTS_PAR_REGION[region]:
+                    p, _ = _collecter(code_rome, {"departement": departement}, LIMITE_API)
+                    partie.extend(p)
+            offres.extend(partie)
+        offres = dedupliquer(offres)
+        logger.info(
+            "ROME %s : %s offres collectees sur %s annoncees.",
+            code_rome, len(offres), total,
+        )
+
+    if total_souhaite:
+        offres = offres[:total_souhaite]
+    return offres
 
 
 def dedupliquer(offres):

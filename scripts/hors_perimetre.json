@@ -1,0 +1,15 @@
+{
+  "_description": "Offres mal codees par les employeurs : rangees dans un metier informatique (domaine M18) alors qu'elles n'en relevent pas. Exemple : 'Serveur (H/F)' en restauration, code par erreur 'Administrateur de serveurs'. Une offre est ecartee si son intitule (minuscules, sans accents) contient un motif de 'motifs' ET aucun motif de 'sauf'. Les offres ecartees restent dans l'entrepot (colonne hors_perimetre = vrai) : elles ne sont ni supprimees, ni comptees dans les analyses.",
+  "motifs": [
+    "\\bserveu(r|se)s?\\b", "\\bchef de rang\\b", "\\bcommis\\b", "\\bcuisini", "\\bplongeu",
+    "\\bbarman\\b", "\\bbarmaid\\b", "\\brestauration\\b", "\\bemploye(e)? polyvalent",
+    "aide[ -]soignant", "\\baes\\b", "\\bamp\\b", "auxiliaire de vie", "accompagnant(e)? educatif",
+    "infirmi", "charpente", "\\bbeton\\b", "genie civil", "\\bmacon", "\\bcouvreu",
+    "plombi", "electricien du batiment", "\\bchauffeur\\b", "\\bcariste\\b", "manutention"
+  ],
+  "sauf": [
+    "informatique", "administrat", "systeme", "reseau", "linux", "windows", "\\bweb\\b",
+    "application", "cloud", "ingenieur (systeme|reseau|cloud|devops)", "technicien (informatique|systeme|reseau|support)",
+    "exploitation", "support", "data", "logiciel", "devops", "\\bsql\\b", "base(s)? de donnees"
+  ]
+}
