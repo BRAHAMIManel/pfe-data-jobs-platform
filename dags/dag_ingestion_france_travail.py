@@ -3,14 +3,23 @@ DAG d'ingestion France Travail — domaine ROME M18.
 
 1. perimetre_rome : recupere la liste des metiers depuis le referentiel
 2. collecte_vers_raw : un fichier brut par metier, sans transformation
-3. normalisation_vers_silver : fusion, deduplication, filtre de fraicheur
+3. normalisation_vers_silver : fusion, deduplication -> silver en JSON
+4. spark_vers_silver : le meme travail avec PySpark, plus l'extraction des
+   competences -> silver en Parquet
+5. declencher_gold : lance le DAG chargement_gold pour la meme date
+
+Le JSON est garde comme filet de securite : si le job Spark echoue, la
+tache passe en "skipped" (rose dans Airflow) et chargement_gold relit le
+JSON. Les donnees du jour ne sont jamais perdues.
 """
 
 import logging
 from datetime import datetime, timedelta
 
 from airflow import DAG
+from airflow.exceptions import AirflowSkipException
 from airflow.operators.python import PythonOperator
+from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 
 from france_travail import (
     JOURS_MAX_ANCIENNETE,
@@ -143,6 +152,20 @@ def normaliser_vers_silver(**context):
     return stats
 
 
+def spark_vers_silver(**context):
+    """Job PySpark raw -> silver Parquet (voir scripts/spark_silver.py)."""
+    date_execution = context["ds"]
+    chemins = context["ti"].xcom_pull(task_ids="collecte_vers_raw")
+
+    try:
+        from spark_silver import executer
+        return executer(date_execution, chemins)
+    except Exception as erreur:
+        # Pas d'echec du DAG : le silver JSON existe deja, gold le relira.
+        logger.exception("Job Spark en echec, repli sur le JSON : %s", erreur)
+        raise AirflowSkipException(f"Spark en echec : {erreur}")
+
+
 with DAG(
     dag_id="ingestion_france_travail",
     description="Collecte des offres France Travail (domaine ROME M18)",
@@ -168,4 +191,26 @@ with DAG(
         python_callable=normaliser_vers_silver,
     )
 
-    perimetre_rome >> collecte_vers_raw >> normalisation_vers_silver
+    spark_silver = PythonOperator(
+        task_id="spark_vers_silver",
+        python_callable=spark_vers_silver,
+        retries=0,  # un echec Spark n'est pas passager : repli direct
+    )
+
+    # Le chargement part des que silver est pret, sans horaire a deviner.
+    # "none_failed" : lance aussi quand Spark est "skipped" (repli JSON),
+    # mais pas si la collecte ou la normalisation ont echoue.
+    declencher_gold = TriggerDagRunOperator(
+        task_id="declencher_gold",
+        trigger_dag_id="chargement_gold",
+        conf={"date": "{{ ds }}"},
+        trigger_rule="none_failed",
+    )
+
+    (
+        perimetre_rome
+        >> collecte_vers_raw
+        >> normalisation_vers_silver
+        >> spark_silver
+        >> declencher_gold
+    )

@@ -3,13 +3,22 @@ DAG de chargement gold — silver vers le schema en etoile.
 
 Lit le fichier silver du jour, eclate les offres en dimensions et faits,
 puis charge dans postgres-dwh. Reexecutable sans creer de doublon.
+
+Lance par le DAG d'ingestion (plus d'horaire fixe). La date a charger
+arrive dans la configuration du run : {"date": "AAAA-MM-JJ"}. Lance a la
+main sans configuration, il prend la date du jour.
+
+Lecture : le Parquet produit par Spark en priorite, le JSON sinon.
+A la fin, il lance detecteur_niches pour la meme date.
 """
 
+import io
 import logging
 from datetime import date, datetime, timedelta
 
 from airflow import DAG
 from airflow.operators.python import PythonOperator
+from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 
 from dwh import (
     charger_dimensions,
@@ -19,9 +28,10 @@ from dwh import (
     completer_offres_anciennes,
     creer_schema,
 )
-from storage import lire_json
+from storage import lire_json, lire_octets, objet_existe
 from transformation import (
     URL_OFFRE_FRANCE_TRAVAIL,
+    charger_dictionnaire,
     charger_postes,
     classer_poste,
     est_hors_perimetre,
@@ -44,6 +54,42 @@ default_args = {
 }
 
 
+def date_a_charger(context):
+    """Date transmise par le DAG d'ingestion, sinon la date du run."""
+    conf = getattr(context.get("dag_run"), "conf", None) or {}
+    return conf.get("date") or context["ds"]
+
+
+def lire_silver(date_execution):
+    """Offres silver d'une date : Parquet (Spark) si present, JSON sinon.
+
+    Renvoie (offres, format_lu). Les offres sont des dictionnaires dans
+    les deux cas, le reste du chargement ne voit pas la difference.
+    """
+    base = f"france_travail/date={date_execution}/offres"
+
+    if objet_existe(BUCKET_SILVER, base + ".parquet"):
+        import pyarrow.parquet as pq
+
+        table = pq.read_table(io.BytesIO(lire_octets(BUCKET_SILVER, base + ".parquet")))
+        return table.to_pylist(), "parquet"
+
+    logger.warning("Pas de Parquet pour %s : lecture du JSON.", date_execution)
+    return lire_json(BUCKET_SILVER, base + ".json"), "json"
+
+
+def competences_de(offre, categories):
+    """Competences d'une offre : celles trouvees par Spark si disponibles.
+
+    Une offre lue depuis le JSON n'a pas ce champ : on fait l'extraction
+    en Python, avec le meme dictionnaire. Le resultat est identique.
+    """
+    deja = offre.get("competences_extraites")
+    if deja is not None:
+        return [(libelle, categories[libelle]) for libelle in deja if libelle in categories]
+    return extraire_competences(offre.get("description"))
+
+
 def initialiser_schema(**_):
     creer_schema()
     charger_referentiels(
@@ -52,13 +98,12 @@ def initialiser_schema(**_):
 
 
 def charger_entrepot(**context):
-    date_execution = context["ds"]
+    date_execution = date_a_charger(context)
 
-    offres = lire_json(
-        BUCKET_SILVER,
-        f"france_travail/date={date_execution}/offres.json",
-    )
-    logger.info("%s offres lues depuis silver.", len(offres))
+    offres, format_lu = lire_silver(date_execution)
+    logger.info("%s offres lues depuis silver (%s, %s).",
+                len(offres), format_lu, date_execution)
+    categories = {libelle: cat for libelle, cat, _ in charger_dictionnaire()}
 
     metiers, lieux, entreprises = {}, {}, set()
     contrats, dates, competences = set(), {}, {}
@@ -108,7 +153,7 @@ def charger_entrepot(**context):
                 date_creation.isocalendar()[1], date_creation.weekday(),
             )
 
-        trouvees = extraire_competences(offre.get("description"))
+        trouvees = competences_de(offre, categories)
         for libelle, categorie in trouvees:
             competences[libelle] = categorie
             liens_competences.append((identifiant, libelle))
@@ -179,6 +224,8 @@ def charger_entrepot(**context):
     )
 
     stats = {
+        "date": date_execution,
+        "format_silver": format_lu,
         "offres_lues": len(offres),
         "offres_nouvelles": nouvelles,
         "offres_revues": mises_a_jour,
@@ -201,7 +248,7 @@ with DAG(
     dag_id="chargement_gold",
     description="Chargement du schema en etoile depuis la couche silver",
     start_date=datetime(2026, 9, 1),
-    schedule="0 12 * * *",  # apres les ingestions
+    schedule=None,  # lance par ingestion_france_travail
     catchup=False,
     default_args=default_args,
     tags=["pfe", "gold", "entrepot"],
@@ -217,4 +264,10 @@ with DAG(
         python_callable=charger_entrepot,
     )
 
-    schema >> chargement
+    declencher_detecteur = TriggerDagRunOperator(
+        task_id="declencher_detecteur",
+        trigger_dag_id="detecteur_niches",
+        conf={"date": "{{ (dag_run.conf or {}).get('date', ds) }}"},
+    )
+
+    schema >> chargement >> declencher_detecteur

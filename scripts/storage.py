@@ -1,7 +1,8 @@
 """
 Acces au Data Lake MinIO (compatible S3).
 
-Une seule responsabilite : lire et ecrire du JSON dans les buckets.
+Une seule responsabilite : lire et ecrire des objets (JSON, Parquet)
+dans les buckets.
 """
 
 import io
@@ -11,6 +12,7 @@ import os
 from urllib.parse import urlparse
 
 from minio import Minio
+from minio.error import S3Error
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +60,57 @@ def lire_json(bucket, chemin_objet):
     try:
         response = client.get_object(bucket, chemin_objet)
         return json.loads(response.read().decode("utf-8"))
+    finally:
+        if response is not None:
+            response.close()
+            response.release_conn()
+
+
+# ---------------------------------------------------------------------------
+# Fichiers binaires (Parquet) : utilises par le job PySpark et par gold.
+# ---------------------------------------------------------------------------
+
+def objet_existe(bucket, chemin_objet):
+    """True si l'objet existe dans le bucket."""
+    client = get_minio_client()
+    try:
+        client.stat_object(bucket, chemin_objet)
+        return True
+    except S3Error as erreur:
+        if erreur.code in ("NoSuchKey", "NoSuchBucket", "NoSuchObject"):
+            return False
+        raise
+
+
+def telecharger_fichier(bucket, chemin_objet, chemin_local):
+    """Copie un objet du Data Lake vers un fichier local."""
+    get_minio_client().fget_object(bucket, chemin_objet, str(chemin_local))
+    return chemin_local
+
+
+def deposer_fichier(bucket, chemin_objet, chemin_local,
+                    content_type="application/octet-stream"):
+    """Envoie un fichier local dans un bucket. Cree le bucket s'il manque."""
+    client = get_minio_client()
+    if not client.bucket_exists(bucket):
+        client.make_bucket(bucket)
+        logger.info("Bucket %s cree.", bucket)
+
+    client.fput_object(
+        bucket, chemin_objet, str(chemin_local), content_type=content_type
+    )
+    taille = os.path.getsize(chemin_local)
+    logger.info("Ecrit s3://%s/%s (%.1f Ko)", bucket, chemin_objet, taille / 1024)
+    return f"s3://{bucket}/{chemin_objet}"
+
+
+def lire_octets(bucket, chemin_objet):
+    """Relit un objet tel quel, en octets (pour un fichier Parquet)."""
+    client = get_minio_client()
+    response = None
+    try:
+        response = client.get_object(bucket, chemin_objet)
+        return response.read()
     finally:
         if response is not None:
             response.close()

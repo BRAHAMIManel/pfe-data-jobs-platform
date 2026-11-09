@@ -23,7 +23,6 @@ from transformation import charger_categories, charger_dictionnaire, charger_pos
 
 st.set_page_config(
     page_title="Détecteur de niches IT",
-    page_icon="🎯",
     layout="wide",
 )
 st.markdown(s.CSS, unsafe_allow_html=True)

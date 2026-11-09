@@ -51,9 +51,12 @@ class TestNormaliserVille:
     def test_valeurs_vides(self, entree):
         assert normaliser_ville(entree) is None
 
-    def test_ville_contenant_un_nombre_non_tronquee(self):
-        # Le motif ne doit retirer que le suffixe "N Arrondissement".
-        assert normaliser_ville("Sainte-Marie 2") == "SAINTE-MARIE 2"
+    def test_numero_final_retire(self):
+        # Choix assume : "PARIS 15" etait compte a part de "PARIS". Aucune
+        # commune francaise ne finit par un nombre, on retire donc tout
+        # numero final.
+        assert normaliser_ville("PARIS 15") == "PARIS"
+        assert normaliser_ville("Lyon 3eme") == "LYON"
 
 
 # -------------------------------------------------------- decoupage du lieu

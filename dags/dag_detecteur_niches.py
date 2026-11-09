@@ -2,7 +2,8 @@
 DAG du detecteur de niches.
 
 Recalcule l'agregat de tension par metier et departement a partir du
-schema en etoile. S'execute apres le chargement gold.
+schema en etoile. Lance par chargement_gold, avec la date dans la
+configuration du run ({"date": "AAAA-MM-JJ"}). A la main : date du jour.
 """
 
 import logging
@@ -27,8 +28,15 @@ default_args = {
 }
 
 
+def date_de_calcul(context):
+    """Date transmise par chargement_gold, sinon la date du run."""
+    conf = getattr(context.get("dag_run"), "conf", None) or {}
+    texte = conf.get("date") or context["ds"]
+    return datetime.strptime(texte, "%Y-%m-%d").date()
+
+
 def calculer(**context):
-    date_calcul = datetime.strptime(context["ds"], "%Y-%m-%d").date()
+    date_calcul = date_de_calcul(context)
     stats = calculer_tension(date_calcul)
 
     logger.info("--- Couples les plus tendus ---")
@@ -42,7 +50,7 @@ def calculer(**context):
 
 
 def calculer_penurie_territoires(**context):
-    date_calcul = datetime.strptime(context["ds"], "%Y-%m-%d").date()
+    date_calcul = date_de_calcul(context)
     stats = calculer_opportunite(date_calcul)
 
     for niveau in ("region", "ville"):
@@ -62,7 +70,7 @@ with DAG(
     dag_id="detecteur_niches",
     description="Score de tension (metier x departement) et indice de penurie (region, ville)",
     start_date=datetime(2026, 9, 1),
-    schedule="30 12 * * *",  # apres chargement_gold
+    schedule=None,  # lance par chargement_gold
     catchup=False,
     default_args=default_args,
     tags=["pfe", "gold", "analyse"],

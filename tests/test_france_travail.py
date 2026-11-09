@@ -20,6 +20,7 @@ class FausseReponse:
         self.status_code = status_code
         self._resultats = resultats or []
         self.text = ""
+        self.headers = {}
 
     def json(self):
         return {"resultats": self._resultats}
@@ -37,6 +38,12 @@ def maintenant_moins(jours):
 # --------------------------------------------------------------- pagination
 
 class TestPagination:
+
+    @pytest.fixture(autouse=True)
+    def jeton_factice(self, monkeypatch):
+        """Le client demande lui-meme son jeton (cache + renouvellement
+        apres un 401). Dans les tests, aucun appel OAuth : jeton factice."""
+        monkeypatch.setattr(france_travail, "get_access_token", lambda forcer=False: "token")
 
     def test_arret_sur_page_incomplete(self, monkeypatch):
         """Bug corrige : quand un metier renvoyait moins d'offres que
