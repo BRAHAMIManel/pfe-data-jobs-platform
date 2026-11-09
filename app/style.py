@@ -178,14 +178,15 @@ def jauge(score):
     c = 326.7
     return (
         '<svg viewBox="0 0 120 120" width="132" height="132" role="img" '
-        f'aria-label="Opportunité {score} %" style="flex:none">'
+        f'aria-label="Opportunité {score} sur 100" style="flex:none">'
         '<circle cx="60" cy="60" r="52" fill="none" stroke="#F4E9EB" stroke-width="12"/>'
         f'<circle cx="60" cy="60" r="52" fill="none" stroke="{BORDEAUX}" stroke-width="12" '
         f'stroke-linecap="round" stroke-dasharray="{c}" stroke-dashoffset="{c * (1 - score / 100):.1f}" '
         'transform="rotate(-90 60 60)"/>'
         f'<text x="60" y="62" text-anchor="middle" font-family="Sora, sans-serif" font-weight="800" '
-        f'font-size="26" fill="{ENCRE}">{score} %</text>'
-        f'<text x="60" y="80" text-anchor="middle" font-size="10" fill="{GRIS}">opportunité</text></svg>'
+        f'font-size="26" fill="{ENCRE}">{score}</text>'
+        f'<text x="60" y="80" text-anchor="middle" font-size="10" fill="{GRIS}">sur 100</text>'
+        f'</svg>'
     )
 
 

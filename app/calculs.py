@@ -5,8 +5,11 @@ L'entrepot fournit les offres ; ici on les croise avec le CV (competences,
 experience), les postes vises et la zone choisie. Fonctions pures sur des
 DataFrame : aucune requete, aucun affichage, donc faciles a tester.
 
-Score d'opportunite d'un territoire, en % :
+Score d'opportunite d'un territoire, sur 100 :
     100 x ( 0,45 x penurie + 0,35 x adequation au CV + 0,20 x volume )
+
+Le score classe les territoires selon des signaux de tension et
+l'adequation au profil ; ce n'est pas une probabilite d'embauche.
 """
 
 import math
@@ -175,6 +178,18 @@ def _signal(evenements, offres, taux):
     return (evenements + poids * taux) / (offres + poids) / taux
 
 
+def penurie_depuis_indice(indice):
+    """Indice de penurie -> note entre 0 et 1.
+
+    Regle : la moyenne nationale (indice 1,0) vaut 0,5. Chaque point de
+    signaux en plus ou en moins deplace la note d'autant : indice 1,5
+    (50 % de signaux de plus que la moyenne) = 1 ; indice 0,5 = 0.
+    Meme pente que l'ancienne formule (indice - 0,6), donc meme
+    classement : seul le point de depart change, la moyenne vaut 50.
+    """
+    return (indice - 0.5).clip(0, 1)
+
+
 def indice_penurie(offres, persistantes, manque, refs):
     """1,00 = marche moyen. Moyenne des deux signaux quand ils existent."""
     tp, tm = refs["persistance"], refs["manque"]
@@ -219,8 +234,7 @@ def noter_territoires(offres, niveau, refs, volume_max=None):
 
     t["indice"] = indice_penurie(t["offres"], t["persistantes"], t["manque"], refs)
 
-    # Indice 0,6 -> 0 %, 1,6 -> 100 % : 1,0 (marche moyen) = 40 %.
-    t["penurie"] = ((t["indice"] - 0.6) / 1.0).clip(0, 1)
+    t["penurie"] = penurie_depuis_indice(t["indice"])
     maxi = volume_max or t["offres"].max()
     t["volume"] = (np.log1p(t["offres"]) / np.log1p(maxi)).clip(upper=1)
     t["score"] = (
@@ -348,7 +362,7 @@ def recommander_postes(offres, refs, postes_libelles, exemples=3):
     })
 
     r["indice"] = indice_penurie(r["offres"], r["persistantes"], r["manque"], refs)
-    r["penurie"] = ((r["indice"] - 0.6) / 1.0).clip(0, 1)
+    r["penurie"] = penurie_depuis_indice(r["indice"])
     r["volume"] = np.log1p(r["offres"]) / np.log1p(r["offres"].max())
     r["score"] = (
         100 * (

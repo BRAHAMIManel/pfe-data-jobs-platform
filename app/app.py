@@ -272,7 +272,7 @@ def bloc_postes_recommandes():
             texte.markdown(
                 f'<div style="padding:4px 0"><span class="dn-eyebrow">{escape(CATEGORIES.get(CATEGORIE_DU_POSTE.get(r.id_poste), ""))}</span><br>'
                 f'<b>{escape(r.libelle)}</b>{s.badge(r.fiabilite)}'
-                f'<span style="float:right;font:800 18px Sora,sans-serif;color:{s.BORDEAUX_FONCE}">{r.score}\u00a0%</span>'
+                f'<span style="float:right;font:800 18px Sora,sans-serif;color:{s.BORDEAUX_FONCE}">{r.score}<span style="font-size:13px;font-weight:600">\u00a0/\u00a0100</span></span>'
                 f'<div class="dn-muted" style="font-size:13px">{mot(int(r.offres), "offre compatible", "offres compatibles")} · '
                 f'adéquation {pct(r.adequation)} · pénurie {pct(r.penurie)}</div>'
                 f'<div class="dn-muted" style="font-size:12.5px;font-style:italic">Ex. : {exemples}</div></div>',
@@ -421,7 +421,10 @@ def tableau_classement(lignes, niveau, cle):
         on_select="rerun", selection_mode="multi-row",
         column_config={
             "Pénurie": st.column_config.NumberColumn(format="%d %%", help="0 % = recrutements faciles, 100 % = forte pénurie"),
-            "Opportunité": st.column_config.ProgressColumn(format="%d %%", min_value=0, max_value=100),
+            "Opportunité": st.column_config.ProgressColumn(
+                format="%d / 100", min_value=0, max_value=100,
+                help="Score sur 100. Ce n'est pas une probabilité d'embauche.",
+            ),
             "< 14 j": st.column_config.NumberColumn(help="Offres publiées depuis moins de 14 jours"),
         },
     )
@@ -454,8 +457,8 @@ def etape_territoires():
     )
     st.markdown(
         f'<p class="dn-muted"><b>{escape(libelle_zone())}</b> · pour '
-        f'{escape(", ".join(POSTES[p] for p in E.postes))}. Opportunité en % : pénurie de '
-        "candidats, adéquation à ton CV et volume d'offres. Coche une ou plusieurs lignes du "
+        f'{escape(", ".join(POSTES[p] for p in E.postes))}. Score d\'opportunité sur 100 : '
+        "pénurie de candidats, adéquation à ton CV et volume d'offres. Coche une ou plusieurs lignes du "
         "classement, ou prends toute la liste.</p>",
         unsafe_allow_html=True,
     )
@@ -546,7 +549,7 @@ def etape_territoires():
                 meilleure = ailleurs.iloc[0]
                 st.markdown(
                     f'<div class="dn-encart">Hors de ta zone : <b>{escape(meilleure["libelle"])}</b> '
-                    f'({escape(meilleure["region"])}) atteint <b>{meilleure["score"]} %</b>.</div>',
+                    f'({escape(meilleure["region"])}) atteint <b>{meilleure["score"]} / 100</b>.</div>',
                     unsafe_allow_html=True,
                 )
                 st.button(
@@ -754,13 +757,15 @@ st.markdown(s.bandeau(E.etape), unsafe_allow_html=True)
 with st.popover("Comment le score est calculé"):
     st.markdown(
         f"""
-**Opportunité = 45 % pénurie + 35 % adéquation au CV + 20 % volume d'offres.**
-Ce n'est pas une probabilité d'embauche : 100 % correspond au territoire idéal.
+**Score d'opportunité (sur 100) = 45 % pénurie + 35 % adéquation au CV + 20 % volume d'offres.**
+
+Le score classe les territoires selon des signaux de tension et l'adéquation au profil ;
+ce n'est pas une probabilité d'embauche.
 
 - **Pénurie** : deux signaux, les offres encore en ligne après {c.SEUIL_JOURS} jours et celles que
   France Travail signale comme manquant de candidats. Chacun est lissé vers la moyenne nationale
   ({pct(REFS['persistance'])} et {pct(REFS['manque'])} aujourd'hui), pour qu'une ville avec 3 offres
-  ne passe pas devant Paris par hasard.
+  ne passe pas devant Paris par hasard. Un territoire dans la moyenne nationale a une pénurie de 50 %.
 - **Adéquation** : pour chaque offre, compétences demandées présentes dans ton CV ÷ compétences demandées.
 - **Volume** : nombre d'offres compatibles, sur une échelle logarithmique.
 - Seules comptent les offres qui partagent au moins {c.MIN_COMMUNES} compétences avec ton CV et qui
