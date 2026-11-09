@@ -156,6 +156,18 @@ def construire_silver(spark, fichiers_json, dossier_sortie):
     return fichiers[0], stats
 
 
+def chemin_local(dossier, code_rome):
+    """Ou copier le fichier brut d'un metier avant de le donner a Spark.
+
+    Le nom d'origine contient le run_id d'Airflow, par exemple
+    "offres_scheduled__2026-11-08T11:00:00+00:00.json". Spark (via Hadoop)
+    refuse les ":" dans un nom de fichier : "Relative path in absolute URI".
+    On garde donc le dossier code_rome=..., d'ou Spark lit le code ROME,
+    et on renomme le fichier simplement.
+    """
+    return Path(dossier) / "raw" / f"code_rome={code_rome}" / "offres.json"
+
+
 def executer(date_execution, chemins_raw):
     """Point d'entree appele par le DAG.
 
@@ -168,8 +180,8 @@ def executer(date_execution, chemins_raw):
     spark = None
     try:
         fichiers = []
-        for chemin in chemins_raw.values():
-            local = dossier / "raw" / chemin
+        for code_rome, chemin in chemins_raw.items():
+            local = chemin_local(dossier, code_rome)
             local.parent.mkdir(parents=True, exist_ok=True)
             telecharger_fichier(BUCKET_RAW, chemin, local)
             fichiers.append(local)

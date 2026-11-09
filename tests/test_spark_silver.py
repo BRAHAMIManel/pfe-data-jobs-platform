@@ -21,7 +21,7 @@ if not (os.getenv("JAVA_HOME") or shutil.which("java")):
 
 import pyarrow.parquet as pq  # noqa: E402
 
-from spark_silver import construire_silver, creer_session  # noqa: E402
+from spark_silver import chemin_local, construire_silver, creer_session  # noqa: E402
 from transformation import extraire_competences  # noqa: E402
 
 DESCRIPTIONS = [
@@ -121,3 +121,30 @@ def test_champs_imbriques_conserves(resultat):
 def test_un_seul_fichier_parquet(resultat):
     _, stats = resultat
     assert stats["taille_parquet_ko"] > 0
+
+
+def test_chemin_local_sans_deux_points(tmp_path):
+    """Bug du 9/11 : le run_id d'Airflow met des ":" dans le nom du fichier
+    brut, ce que Spark refuse. Le chemin local n'en contient plus."""
+    local = chemin_local(tmp_path, "M1805")
+    assert ":" not in local.name
+    assert local.parent.name == "code_rome=M1805"
+
+
+def test_nom_airflow_reel_lisible(spark, tmp_path):
+    """Le run complet avec un vrai nom de run Airflow passe dans Spark."""
+    brut = (
+        tmp_path / "lac" / "france_travail" / "code_rome=M1805" / "date=2026-11-08"
+        / "offres_scheduled__2026-11-08T11:00:00+00:00.json"
+    )
+    brut.parent.mkdir(parents=True)
+    brut.write_text(json.dumps([offre("1", "Python et SQL")]), encoding="utf-8")
+
+    local = chemin_local(tmp_path / "travail", "M1805")
+    local.parent.mkdir(parents=True)
+    local.write_bytes(brut.read_bytes())
+
+    parquet, stats = construire_silver(spark, [local], tmp_path / "sortie")
+    assert stats["offres_silver"] == 1
+    ligne = pq.read_table(parquet).to_pylist()[0]
+    assert ligne["_code_rome_collecte"] == "M1805"
