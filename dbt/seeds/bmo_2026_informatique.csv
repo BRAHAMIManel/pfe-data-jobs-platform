@@ -1,0 +1,244 @@
+departement,code_region,code_fap,metier_fap,projets,difficiles
+01,84,M1X80,Techniciens d'étude et de développement en informatique,7,7
+01,84,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",35,21
+06,93,M1X80,Techniciens d'étude et de développement en informatique,255,151
+06,93,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",127,87
+06,93,M2X90,"Ingénieurs et cadres d'étude, recherche et développement en informatique et télécom",564,432
+06,93,M2X91,Chefs de projet et directeurs de service informatique,43,40
+06,93,M2X92,"Responsables et cadres de la production, de l'exploitation et de la maintenance informatique et télécom",5,5
+06,93,M2X93,Experts et consultants en systèmes d'information,64,24
+07,84,M2X90,"Ingénieurs et cadres d'étude, recherche et développement en informatique et télécom",5,5
+12,76,M1X80,Techniciens d'étude et de développement en informatique,27,15
+13,93,M1X80,Techniciens d'étude et de développement en informatique,365,143
+13,93,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",438,220
+13,93,M2X90,"Ingénieurs et cadres d'étude, recherche et développement en informatique et télécom",621,295
+13,93,M2X91,Chefs de projet et directeurs de service informatique,52,17
+13,93,M2X92,"Responsables et cadres de la production, de l'exploitation et de la maintenance informatique et télécom",61,51
+13,93,M2X93,Experts et consultants en systèmes d'information,156,56
+14,28,M1X80,Techniciens d'étude et de développement en informatique,46,28
+14,28,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",44,11
+14,28,M2X90,"Ingénieurs et cadres d'étude, recherche et développement en informatique et télécom",41,28
+14,28,M2X92,"Responsables et cadres de la production, de l'exploitation et de la maintenance informatique et télécom",7,7
+14,28,M2X93,Experts et consultants en systèmes d'information,11,8
+15,84,M2X90,"Ingénieurs et cadres d'étude, recherche et développement en informatique et télécom",31,31
+16,75,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",36,21
+16,75,M2X92,"Responsables et cadres de la production, de l'exploitation et de la maintenance informatique et télécom",7,5
+17,75,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",44,28
+19,75,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",14,14
+19,75,M2X92,"Responsables et cadres de la production, de l'exploitation et de la maintenance informatique et télécom",26,22
+21,27,M1X80,Techniciens d'étude et de développement en informatique,144,110
+21,27,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",32,25
+21,27,M2X90,"Ingénieurs et cadres d'étude, recherche et développement en informatique et télécom",30,12
+21,27,M2X91,Chefs de projet et directeurs de service informatique,8,8
+21,27,M2X93,Experts et consultants en systèmes d'information,11,11
+22,53,M1X80,Techniciens d'étude et de développement en informatique,6,6
+22,53,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",20,20
+25,27,M1X80,Techniciens d'étude et de développement en informatique,15,15
+26,84,M2X90,"Ingénieurs et cadres d'étude, recherche et développement en informatique et télécom",9,9
+27,28,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",6,6
+28,24,M1X80,Techniciens d'étude et de développement en informatique,33,33
+28,24,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",7,7
+28,24,M2X90,"Ingénieurs et cadres d'étude, recherche et développement en informatique et télécom",20,19
+29,53,M1X80,Techniciens d'étude et de développement en informatique,8,7
+29,53,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",19,19
+2A,94,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",13,8
+30,76,M1X80,Techniciens d'étude et de développement en informatique,28,13
+30,76,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",63,22
+31,76,M1X80,Techniciens d'étude et de développement en informatique,570,228
+31,76,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",254,97
+31,76,M2X90,"Ingénieurs et cadres d'étude, recherche et développement en informatique et télécom",1118,521
+31,76,M2X91,Chefs de projet et directeurs de service informatique,117,55
+31,76,M2X92,"Responsables et cadres de la production, de l'exploitation et de la maintenance informatique et télécom",48,20
+31,76,M2X93,Experts et consultants en systèmes d'information,298,106
+33,75,M1X80,Techniciens d'étude et de développement en informatique,129,99
+33,75,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",177,112
+33,75,M2X90,"Ingénieurs et cadres d'étude, recherche et développement en informatique et télécom",742,519
+33,75,M2X91,Chefs de projet et directeurs de service informatique,80,59
+33,75,M2X92,"Responsables et cadres de la production, de l'exploitation et de la maintenance informatique et télécom",25,25
+33,75,M2X93,Experts et consultants en systèmes d'information,142,83
+34,76,M1X80,Techniciens d'étude et de développement en informatique,153,12
+34,76,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",86,12
+34,76,M2X90,"Ingénieurs et cadres d'étude, recherche et développement en informatique et télécom",315,130
+34,76,M2X91,Chefs de projet et directeurs de service informatique,49,8
+34,76,M2X92,"Responsables et cadres de la production, de l'exploitation et de la maintenance informatique et télécom",83,10
+34,76,M2X93,Experts et consultants en systèmes d'information,59,20
+35,53,M1X80,Techniciens d'étude et de développement en informatique,183,157
+35,53,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",172,134
+35,53,M2X90,"Ingénieurs et cadres d'étude, recherche et développement en informatique et télécom",462,204
+35,53,M2X91,Chefs de projet et directeurs de service informatique,41,16
+35,53,M2X92,"Responsables et cadres de la production, de l'exploitation et de la maintenance informatique et télécom",34,13
+35,53,M2X93,Experts et consultants en systèmes d'information,130,45
+36,24,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",15,10
+37,24,M1X80,Techniciens d'étude et de développement en informatique,105,27
+37,24,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",50,8
+37,24,M2X90,"Ingénieurs et cadres d'étude, recherche et développement en informatique et télécom",30,15
+38,84,M1X80,Techniciens d'étude et de développement en informatique,57,18
+38,84,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",76,15
+38,84,M2X90,"Ingénieurs et cadres d'étude, recherche et développement en informatique et télécom",276,188
+40,75,M1X80,Techniciens d'étude et de développement en informatique,45,5
+42,84,M1X80,Techniciens d'étude et de développement en informatique,43,11
+42,84,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",43,29
+44,52,M1X80,Techniciens d'étude et de développement en informatique,354,204
+44,52,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",233,154
+44,52,M2X90,"Ingénieurs et cadres d'étude, recherche et développement en informatique et télécom",962,498
+44,52,M2X91,Chefs de projet et directeurs de service informatique,39,14
+44,52,M2X92,"Responsables et cadres de la production, de l'exploitation et de la maintenance informatique et télécom",32,17
+44,52,M2X93,Experts et consultants en systèmes d'information,83,40
+45,24,M1X80,Techniciens d'étude et de développement en informatique,116,23
+45,24,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",94,27
+45,24,M2X90,"Ingénieurs et cadres d'étude, recherche et développement en informatique et télécom",79,62
+45,24,M2X91,Chefs de projet et directeurs de service informatique,16,15
+46,76,M1X80,Techniciens d'étude et de développement en informatique,34,8
+46,76,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",14,14
+49,52,M1X80,Techniciens d'étude et de développement en informatique,52,41
+49,52,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",48,24
+49,52,M2X90,"Ingénieurs et cadres d'étude, recherche et développement en informatique et télécom",50,33
+49,52,M2X93,Experts et consultants en systèmes d'information,19,19
+50,28,M1X80,Techniciens d'étude et de développement en informatique,6,6
+51,44,M1X80,Techniciens d'étude et de développement en informatique,34,27
+51,44,M2X90,"Ingénieurs et cadres d'étude, recherche et développement en informatique et télécom",28,19
+51,44,M2X91,Chefs de projet et directeurs de service informatique,14,8
+53,52,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",45,41
+53,52,M2X91,Chefs de projet et directeurs de service informatique,10,10
+53,52,M2X93,Experts et consultants en systèmes d'information,17,17
+54,44,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",42,31
+54,44,M2X90,"Ingénieurs et cadres d'étude, recherche et développement en informatique et télécom",77,58
+54,44,M2X93,Experts et consultants en systèmes d'information,39,5
+56,53,M1X80,Techniciens d'étude et de développement en informatique,14,14
+56,53,M2X90,"Ingénieurs et cadres d'étude, recherche et développement en informatique et télécom",21,7
+57,44,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",40,30
+57,44,M2X90,"Ingénieurs et cadres d'étude, recherche et développement en informatique et télécom",17,5
+59,32,M1X80,Techniciens d'étude et de développement en informatique,359,231
+59,32,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",380,252
+59,32,M2X90,"Ingénieurs et cadres d'étude, recherche et développement en informatique et télécom",521,310
+59,32,M2X91,Chefs de projet et directeurs de service informatique,94,83
+59,32,M2X92,"Responsables et cadres de la production, de l'exploitation et de la maintenance informatique et télécom",95,72
+59,32,M2X93,Experts et consultants en systèmes d'information,146,110
+60,32,M1X80,Techniciens d'étude et de développement en informatique,10,10
+60,32,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",88,65
+60,32,M2X90,"Ingénieurs et cadres d'étude, recherche et développement en informatique et télécom",45,45
+61,28,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",6,6
+62,32,M1X80,Techniciens d'étude et de développement en informatique,31,31
+62,32,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",18,15
+63,84,M1X80,Techniciens d'étude et de développement en informatique,109,80
+63,84,M2X90,"Ingénieurs et cadres d'étude, recherche et développement en informatique et télécom",100,70
+63,84,M2X93,Experts et consultants en systèmes d'information,5,5
+64,75,M1X80,Techniciens d'étude et de développement en informatique,44,9
+64,75,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",16,13
+64,75,M2X90,"Ingénieurs et cadres d'étude, recherche et développement en informatique et télécom",127,51
+66,76,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",9,9
+67,44,M1X80,Techniciens d'étude et de développement en informatique,315,237
+67,44,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",107,51
+67,44,M2X90,"Ingénieurs et cadres d'étude, recherche et développement en informatique et télécom",352,163
+67,44,M2X91,Chefs de projet et directeurs de service informatique,25,9
+67,44,M2X93,Experts et consultants en systèmes d'information,15,12
+68,44,M1X80,Techniciens d'étude et de développement en informatique,14,14
+68,44,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",6,6
+68,44,M2X90,"Ingénieurs et cadres d'étude, recherche et développement en informatique et télécom",13,10
+69,84,M1X80,Techniciens d'étude et de développement en informatique,516,339
+69,84,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",555,390
+69,84,M2X90,"Ingénieurs et cadres d'étude, recherche et développement en informatique et télécom",975,527
+69,84,M2X91,Chefs de projet et directeurs de service informatique,132,73
+69,84,M2X92,"Responsables et cadres de la production, de l'exploitation et de la maintenance informatique et télécom",117,79
+69,84,M2X93,Experts et consultants en systèmes d'information,104,77
+70,27,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",5,5
+71,27,M1X80,Techniciens d'étude et de développement en informatique,18,7
+72,52,M1X80,Techniciens d'étude et de développement en informatique,36,8
+72,52,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",49,11
+72,52,M2X90,"Ingénieurs et cadres d'étude, recherche et développement en informatique et télécom",19,19
+72,52,M2X92,"Responsables et cadres de la production, de l'exploitation et de la maintenance informatique et télécom",36,6
+73,84,M1X80,Techniciens d'étude et de développement en informatique,21,14
+73,84,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",53,27
+73,84,M2X90,"Ingénieurs et cadres d'étude, recherche et développement en informatique et télécom",61,49
+73,84,M2X93,Experts et consultants en systèmes d'information,11,7
+74,84,M1X80,Techniciens d'étude et de développement en informatique,43,22
+74,84,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",50,23
+74,84,M2X90,"Ingénieurs et cadres d'étude, recherche et développement en informatique et télécom",55,31
+75,11,M1X80,Techniciens d'étude et de développement en informatique,1686,686
+75,11,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",1101,492
+75,11,M2X90,"Ingénieurs et cadres d'étude, recherche et développement en informatique et télécom",2938,1582
+75,11,M2X91,Chefs de projet et directeurs de service informatique,481,202
+75,11,M2X92,"Responsables et cadres de la production, de l'exploitation et de la maintenance informatique et télécom",243,86
+75,11,M2X93,Experts et consultants en systèmes d'information,1021,543
+76,28,M1X80,Techniciens d'étude et de développement en informatique,65,57
+76,28,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",99,63
+76,28,M2X90,"Ingénieurs et cadres d'étude, recherche et développement en informatique et télécom",221,197
+76,28,M2X91,Chefs de projet et directeurs de service informatique,8,5
+77,11,M1X80,Techniciens d'étude et de développement en informatique,11,9
+77,11,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",84,52
+77,11,M2X90,"Ingénieurs et cadres d'étude, recherche et développement en informatique et télécom",143,98
+77,11,M2X92,"Responsables et cadres de la production, de l'exploitation et de la maintenance informatique et télécom",107,107
+77,11,M2X93,Experts et consultants en systèmes d'information,41,17
+78,11,M1X80,Techniciens d'étude et de développement en informatique,130,51
+78,11,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",200,103
+78,11,M2X90,"Ingénieurs et cadres d'étude, recherche et développement en informatique et télécom",380,261
+78,11,M2X91,Chefs de projet et directeurs de service informatique,78,22
+78,11,M2X92,"Responsables et cadres de la production, de l'exploitation et de la maintenance informatique et télécom",62,21
+78,11,M2X93,Experts et consultants en systèmes d'information,302,115
+79,75,M1X80,Techniciens d'étude et de développement en informatique,28,16
+79,75,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",56,25
+79,75,M2X90,"Ingénieurs et cadres d'étude, recherche et développement en informatique et télécom",100,100
+79,75,M2X91,Chefs de projet et directeurs de service informatique,11,10
+79,75,M2X93,Experts et consultants en systèmes d'information,6,6
+80,32,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",34,24
+80,32,M2X90,"Ingénieurs et cadres d'étude, recherche et développement en informatique et télécom",10,6
+81,76,M1X80,Techniciens d'étude et de développement en informatique,14,7
+81,76,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",17,12
+81,76,M2X90,"Ingénieurs et cadres d'étude, recherche et développement en informatique et télécom",10,6
+81,76,M2X93,Experts et consultants en systèmes d'information,14,14
+82,76,M2X90,"Ingénieurs et cadres d'étude, recherche et développement en informatique et télécom",8,8
+83,93,M1X80,Techniciens d'étude et de développement en informatique,73,54
+83,93,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",35,22
+83,93,M2X90,"Ingénieurs et cadres d'étude, recherche et développement en informatique et télécom",109,109
+83,93,M2X91,Chefs de projet et directeurs de service informatique,10,10
+83,93,M2X92,"Responsables et cadres de la production, de l'exploitation et de la maintenance informatique et télécom",20,20
+83,93,M2X93,Experts et consultants en systèmes d'information,58,52
+84,93,M1X80,Techniciens d'étude et de développement en informatique,41,17
+84,93,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",8,8
+84,93,M2X90,"Ingénieurs et cadres d'étude, recherche et développement en informatique et télécom",9,9
+85,52,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",12,6
+85,52,M2X90,"Ingénieurs et cadres d'étude, recherche et développement en informatique et télécom",9,9
+86,75,M1X80,Techniciens d'étude et de développement en informatique,35,21
+86,75,M2X90,"Ingénieurs et cadres d'étude, recherche et développement en informatique et télécom",37,24
+86,75,M2X91,Chefs de projet et directeurs de service informatique,24,15
+87,75,M1X80,Techniciens d'étude et de développement en informatique,37,13
+87,75,M2X91,Chefs de projet et directeurs de service informatique,13,13
+89,27,M2X92,"Responsables et cadres de la production, de l'exploitation et de la maintenance informatique et télécom",17,17
+90,27,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",10,10
+91,11,M1X80,Techniciens d'étude et de développement en informatique,73,35
+91,11,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",238,165
+91,11,M2X90,"Ingénieurs et cadres d'étude, recherche et développement en informatique et télécom",240,103
+91,11,M2X91,Chefs de projet et directeurs de service informatique,22,13
+91,11,M2X93,Experts et consultants en systèmes d'information,35,25
+92,11,M1X80,Techniciens d'étude et de développement en informatique,1008,447
+92,11,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",820,238
+92,11,M2X90,"Ingénieurs et cadres d'étude, recherche et développement en informatique et télécom",4359,3153
+92,11,M2X91,Chefs de projet et directeurs de service informatique,433,244
+92,11,M2X92,"Responsables et cadres de la production, de l'exploitation et de la maintenance informatique et télécom",166,94
+92,11,M2X93,Experts et consultants en systèmes d'information,1135,554
+93,11,M1X80,Techniciens d'étude et de développement en informatique,284,90
+93,11,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",288,192
+93,11,M2X90,"Ingénieurs et cadres d'étude, recherche et développement en informatique et télécom",273,146
+93,11,M2X92,"Responsables et cadres de la production, de l'exploitation et de la maintenance informatique et télécom",6,6
+93,11,M2X93,Experts et consultants en systèmes d'information,121,99
+94,11,M1X80,Techniciens d'étude et de développement en informatique,259,37
+94,11,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",128,60
+94,11,M2X90,"Ingénieurs et cadres d'étude, recherche et développement en informatique et télécom",277,101
+94,11,M2X91,Chefs de projet et directeurs de service informatique,197,34
+94,11,M2X93,Experts et consultants en systèmes d'information,83,44
+95,11,M1X80,Techniciens d'étude et de développement en informatique,38,38
+95,11,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",37,10
+95,11,M2X90,"Ingénieurs et cadres d'étude, recherche et développement en informatique et télécom",217,124
+95,11,M2X91,Chefs de projet et directeurs de service informatique,5,5
+95,11,M2X92,"Responsables et cadres de la production, de l'exploitation et de la maintenance informatique et télécom",13,13
+95,11,M2X93,Experts et consultants en systèmes d'information,30,23
+971,01,M1X80,Techniciens d'étude et de développement en informatique,17,14
+971,01,M2X90,"Ingénieurs et cadres d'étude, recherche et développement en informatique et télécom",8,7
+973,03,M1X80,Techniciens d'étude et de développement en informatique,20,15
+973,03,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",11,5
+973,03,M2X92,"Responsables et cadres de la production, de l'exploitation et de la maintenance informatique et télécom",24,24
+974,04,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",49,19
+974,04,M2X90,"Ingénieurs et cadres d'étude, recherche et développement en informatique et télécom",13,8
+974,04,M2X92,"Responsables et cadres de la production, de l'exploitation et de la maintenance informatique et télécom",6,6
+976,06,M1X81,"Techniciens de production, d'exploitation, d'installation, et de maintenance, support et services aux utilisateurs en informatique",22,22
+976,06,M2X92,"Responsables et cadres de la production, de l'exploitation et de la maintenance informatique et télécom",10,10

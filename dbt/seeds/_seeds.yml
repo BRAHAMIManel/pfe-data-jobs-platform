@@ -25,3 +25,42 @@ seeds:
         data_tests:
           - accepted_values:
               values: ['anonyme', 'forum', 'plateforme', 'esn', 'interim', 'cabinet', 'portage']
+
+  - name: bmo_2026_informatique
+    description: >
+      Enquete Besoins en Main-d'Oeuvre 2026 (France Travail, open data
+      data.gouv.fr), restreinte aux 6 metiers informatiques FAP2021
+      (M1X80, M1X81, M2X90, M2X91, M2X92, M2X93), sommee par departement.
+      projets = projets de recrutement declares par les employeurs,
+      difficiles = projets juges difficiles. Les cellules masquees par le
+      secret statistique ("*") sont exclues : 90 % des projets restent
+      couverts (39 577 sur 43 955). Sert de reference externe pour
+      calibrer les signaux de penurie (scripts/calibrage_bmo.py).
+    config:
+      column_types:
+        departement: text
+        code_region: text
+        code_fap: text
+        metier_fap: text
+        projets: integer
+        difficiles: integer
+    data_tests:
+      - combinaison_unique:
+          columns: [departement, code_fap]
+    columns:
+      - name: departement
+        data_tests:
+          - not_null
+          - relationships:
+              to: source('entrepot', 'ref_departement')
+              field: departement
+              config:
+                severity: warn
+      - name: code_fap
+        data_tests:
+          - accepted_values:
+              values: ['M1X80', 'M1X81', 'M2X90', 'M2X91', 'M2X92', 'M2X93']
+      - name: projets
+        data_tests: [not_null]
+      - name: difficiles
+        data_tests: [not_null]
