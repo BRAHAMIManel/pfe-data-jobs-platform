@@ -18,3 +18,10 @@ USER airflow
 COPY requirements.txt /requirements.txt
 
 RUN pip install --no-cache-dir -r /requirements.txt
+
+# --- dbt, dans son propre environnement virtuel ---------------------------
+# dbt et Airflow dependent de versions differentes des memes bibliotheques :
+# les separer evite tout conflit. On l'appelle par son chemin complet.
+RUN python -m venv /home/airflow/dbt-venv \
+    && /home/airflow/dbt-venv/bin/pip install --no-cache-dir \
+       dbt-core==1.8.8 dbt-postgres==1.8.2

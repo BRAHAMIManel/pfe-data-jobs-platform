@@ -15,3 +15,6 @@ offres_*.json
 
 # Fichiers système
 .DS_Store
+# dbt : fichiers de travail regeneres a chaque execution
+dbt/target/
+dbt/logs/

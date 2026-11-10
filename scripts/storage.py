@@ -115,3 +115,15 @@ def lire_octets(bucket, chemin_objet):
         if response is not None:
             response.close()
             response.release_conn()
+
+def lister_objets(bucket, prefixe=""):
+    """Noms de tous les objets d'un bucket sous un prefixe."""
+    client = get_minio_client()
+    if not client.bucket_exists(bucket):
+        return []
+    return [o.object_name for o in client.list_objects(bucket, prefix=prefixe, recursive=True)]
+
+
+def date_modification(bucket, chemin_objet):
+    """Jour (UTC) ou l'objet a ete ecrit dans le Data Lake."""
+    return get_minio_client().stat_object(bucket, chemin_objet).last_modified.date()

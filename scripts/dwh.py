@@ -39,6 +39,28 @@ def creer_schema():
     logger.info("Schema en etoile verifie.")
 
 
+def reparer_dates_collecte():
+    """Remet dans l'ordre les offres dont premiere_collecte > derniere_collecte.
+
+    Ces lignes viennent de l'ancienne regle de chargement (voir
+    charger_faits). On echange les deux dates et on recalcule la duree.
+    Sans effet quand tout est en ordre : peut tourner a chaque chargement.
+    """
+    with connexion() as conn, conn.cursor() as cur:
+        cur.execute("""
+            UPDATE fait_offre SET
+                premiere_collecte = derniere_collecte,
+                derniere_collecte = premiere_collecte,
+                jours_en_ligne = premiere_collecte
+                                 - COALESCE(date_creation, derniere_collecte)
+            WHERE premiere_collecte > derniere_collecte
+        """)
+        reparees = cur.rowcount
+    if reparees:
+        logger.warning("%s offres avaient leurs dates de collecte inversees : reparees.", reparees)
+    return reparees
+
+
 def charger_dimensions(metiers, lieux, entreprises, contrats, dates, competences):
     """Insere les dimensions et renvoie les cles de substitution.
 
@@ -109,8 +131,15 @@ def charger_dimensions(metiers, lieux, entreprises, contrats, dates, competences
 def charger_faits(faits):
     """Insere ou met a jour les offres.
 
-    Offre nouvelle    -> premiere_collecte = derniere_collecte = aujourd'hui
+    Offre nouvelle    -> premiere_collecte = derniere_collecte = date de collecte
     Offre deja connue -> derniere_collecte avance, jours_en_ligne recalcule
+
+    Les dates ne peuvent qu'aller dans le bon sens : premiere_collecte ne
+    fait que reculer (LEAST), derniere_collecte ne fait qu'avancer
+    (GREATEST). Recharger une ancienne journee ne remonte donc jamais le
+    temps, et l'etat le plus recent de l'offre (manque de candidats,
+    nombre de postes) n'est pas ecrase par un etat plus ancien.
+    Bug corrige le 10/11, trouve par le test dbt assert_collecte_dans_l_ordre.
 
     C'est cette mesure de duree de presence qui alimentera le score de
     tension du detecteur de niches.
@@ -134,12 +163,21 @@ def charger_faits(faits):
                 url_offre = EXCLUDED.url_offre,
                 experience_annees = EXCLUDED.experience_annees,
                 id_poste = EXCLUDED.id_poste,
-                derniere_collecte = EXCLUDED.derniere_collecte,
-                jours_en_ligne = EXCLUDED.derniere_collecte
+                premiere_collecte = LEAST(fait_offre.premiere_collecte,
+                                          EXCLUDED.premiere_collecte),
+                derniere_collecte = GREATEST(fait_offre.derniere_collecte,
+                                             EXCLUDED.derniere_collecte),
+                jours_en_ligne = GREATEST(fait_offre.derniere_collecte,
+                                          EXCLUDED.derniere_collecte)
                                  - COALESCE(fait_offre.date_creation,
-                                            fait_offre.premiere_collecte),
-                nombre_postes = EXCLUDED.nombre_postes,
-                manque_candidats = EXCLUDED.manque_candidats
+                                            LEAST(fait_offre.premiere_collecte,
+                                                  EXCLUDED.premiere_collecte)),
+                nombre_postes = CASE
+                    WHEN EXCLUDED.derniere_collecte >= fait_offre.derniere_collecte
+                    THEN EXCLUDED.nombre_postes ELSE fait_offre.nombre_postes END,
+                manque_candidats = CASE
+                    WHEN EXCLUDED.derniere_collecte >= fait_offre.derniere_collecte
+                    THEN EXCLUDED.manque_candidats ELSE fait_offre.manque_candidats END
         """, faits)
 
         cur.execute("SELECT COUNT(*) FROM fait_offre")

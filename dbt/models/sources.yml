@@ -1,0 +1,123 @@
+version: 2
+
+# Le schema en etoile charge par Python. dbt ne le modifie pas : il le
+# TESTE. Si un test "error" echoue, la tache Airflow echoue et le
+# detecteur de niches ne tourne pas sur des donnees fausses.
+sources:
+  - name: entrepot
+    schema: public
+    tables:
+      - name: fait_offre
+        description: "Table de faits : une ligne = une offre d'emploi."
+        columns:
+          - name: id_offre
+            data_tests: [unique, not_null]
+          - name: code_rome
+            data_tests:
+              - relationships:
+                  to: source('entrepot', 'dim_metier')
+                  field: code_rome
+          - name: code_insee
+            data_tests:
+              - relationships:
+                  to: source('entrepot', 'dim_lieu')
+                  field: code_insee
+          - name: id_entreprise
+            data_tests:
+              - relationships:
+                  to: source('entrepot', 'dim_entreprise')
+                  field: id_entreprise
+          - name: id_contrat
+            data_tests:
+              - relationships:
+                  to: source('entrepot', 'dim_contrat')
+                  field: id_contrat
+          - name: id_poste
+            data_tests:
+              - relationships:
+                  to: source('entrepot', 'dim_poste')
+                  field: id_poste
+          - name: date_creation
+            data_tests:
+              - relationships:
+                  to: source('entrepot', 'dim_date')
+                  field: id_date
+          - name: premiere_collecte
+            data_tests: [not_null]
+          - name: derniere_collecte
+            data_tests: [not_null]
+          - name: source
+            data_tests:
+              - not_null
+              - accepted_values:
+                  values: ['france_travail']
+          - name: hors_perimetre
+            data_tests: [not_null]
+
+      - name: dim_metier
+        columns:
+          - name: code_rome
+            data_tests: [unique, not_null]
+      - name: dim_lieu
+        columns:
+          - name: code_insee
+            data_tests: [unique, not_null]
+          - name: departement
+            data_tests:
+              - relationships:
+                  to: source('entrepot', 'ref_departement')
+                  field: departement
+                  config:
+                    severity: warn   # un departement inconnu ne bloque pas
+      - name: dim_entreprise
+        columns:
+          - name: id_entreprise
+            data_tests: [unique, not_null]
+      - name: dim_contrat
+        columns:
+          - name: id_contrat
+            data_tests: [unique, not_null]
+      - name: dim_date
+        columns:
+          - name: id_date
+            data_tests: [unique, not_null]
+      - name: dim_poste
+        columns:
+          - name: id_poste
+            data_tests: [unique, not_null]
+      - name: dim_competence
+        columns:
+          - name: id_competence
+            data_tests: [unique, not_null]
+          - name: libelle
+            data_tests: [unique, not_null]
+      - name: pont_offre_competence
+        data_tests:
+          - combinaison_unique:
+              columns: [id_offre, id_competence]
+        columns:
+          - name: id_offre
+            data_tests:
+              - not_null
+              - relationships:
+                  to: source('entrepot', 'fait_offre')
+                  field: id_offre
+          - name: id_competence
+            data_tests:
+              - not_null
+              - relationships:
+                  to: source('entrepot', 'dim_competence')
+                  field: id_competence
+      - name: ref_region
+        columns:
+          - name: code_region
+            data_tests: [unique, not_null]
+      - name: ref_departement
+        columns:
+          - name: departement
+            data_tests: [unique, not_null]
+          - name: code_region
+            data_tests:
+              - relationships:
+                  to: source('entrepot', 'ref_region')
+                  field: code_region

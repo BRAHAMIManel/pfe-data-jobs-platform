@@ -1,0 +1,26 @@
+# Projet dbt : couche gold de l'entrepot (PostgreSQL).
+#
+# Partage des roles :
+#   - Python (DAG chargement_gold) charge le schema en etoile dans "public".
+#   - dbt teste ce schema (sources.yml) puis construit, dans le schema
+#     "analytique", les modeles lus par l'application.
+name: pfe_niches
+version: "1.0.0"
+config-version: 2
+profile: pfe
+
+model-paths: ["models"]
+test-paths: ["tests"]
+target-path: "target"
+clean-targets: ["target", "logs"]
+
+models:
+  pfe_niches:
+    staging:
+      +materialized: view    # toujours a jour, rien a stocker
+    marts:
+      +materialized: table   # lu par l'application : calcule une fois
+
+data_tests:
+  pfe_niches:
+    +severity: error

@@ -1,0 +1,12 @@
+version: 2
+
+models:
+  - name: mart_offres_candidat
+    description: "Offres pretes pour l'application : une ligne par offre et ses competences."
+    columns:
+      - name: id_offre
+        data_tests: [unique, not_null]
+      - name: region
+        data_tests: [not_null]
+      - name: competences
+        data_tests: [not_null]

@@ -1,0 +1,14 @@
+# Connexion a l'entrepot. Aucun secret ici : tout vient des variables
+# d'environnement deja definies pour Airflow (fichier .env).
+pfe:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: "{{ env_var('DWH_HOST', 'postgres-dwh') }}"
+      port: "{{ env_var('DWH_PORT', '5432') | int }}"
+      dbname: "{{ env_var('DWH_DB') }}"
+      user: "{{ env_var('DWH_USER') }}"
+      password: "{{ env_var('DWH_PASSWORD') }}"
+      schema: analytique
+      threads: 2

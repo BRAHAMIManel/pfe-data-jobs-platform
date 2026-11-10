@@ -9,6 +9,9 @@ arrive dans la configuration du run : {"date": "AAAA-MM-JJ"}. Lance a la
 main sans configuration, il prend la date du jour.
 
 Lecture : le Parquet produit par Spark en priorite, le JSON sinon.
+Ensuite dbt teste l'etoile et construit les tables lues par l'application
+(dossier dbt/). Si un test bloquant echoue, le detecteur n'est pas lance :
+on ne calcule pas de scores sur des donnees fausses.
 A la fin, il lance detecteur_niches pour la meme date.
 """
 
@@ -17,6 +20,7 @@ import logging
 from datetime import date, datetime, timedelta
 
 from airflow import DAG
+from airflow.operators.bash import BashOperator
 from airflow.operators.python import PythonOperator
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 
@@ -27,8 +31,15 @@ from dwh import (
     charger_referentiels,
     completer_offres_anciennes,
     creer_schema,
+    reparer_dates_collecte,
 )
-from storage import lire_json, lire_octets, objet_existe
+from storage import (
+    date_modification,
+    lire_json,
+    lire_octets,
+    lister_objets,
+    objet_existe,
+)
 from transformation import (
     URL_OFFRE_FRANCE_TRAVAIL,
     charger_dictionnaire,
@@ -54,10 +65,39 @@ default_args = {
 }
 
 
+def derniere_date_silver():
+    """Date la plus recente pour laquelle silver contient des offres."""
+    dates = {
+        chemin.split("date=")[1].split("/")[0]
+        for chemin in lister_objets(BUCKET_SILVER, "france_travail/date=")
+        if chemin.endswith(("offres.json", "offres.parquet"))
+    }
+    return max(dates) if dates else None
+
+
 def date_a_charger(context):
-    """Date transmise par le DAG d'ingestion, sinon la date du run."""
+    """Quelle journee de silver charger ?
+
+    1. la date transmise par le DAG d'ingestion (cas normal) ;
+    2. lance a la main sans date : la date du run si silver l'a,
+       sinon la derniere date presente dans silver. Avant, un lancement
+       manuel cherchait la date du jour, qui n'existe pas encore
+       (incident du 10/11 : NoSuchKey).
+    """
     conf = getattr(context.get("dag_run"), "conf", None) or {}
-    return conf.get("date") or context["ds"]
+    if conf.get("date"):
+        return conf["date"]
+
+    ds = context["ds"]
+    base = f"france_travail/date={ds}/offres"
+    if objet_existe(BUCKET_SILVER, base + ".parquet") or objet_existe(BUCKET_SILVER, base + ".json"):
+        return ds
+
+    derniere = derniere_date_silver()
+    if derniere is None:
+        raise ValueError("Silver est vide : lancer d'abord ingestion_france_travail.")
+    logger.warning("Pas de silver pour %s : chargement de la derniere date, %s.", ds, derniere)
+    return derniere
 
 
 def lire_silver(date_execution):
@@ -90,8 +130,25 @@ def competences_de(offre, categories):
     return extraire_competences(offre.get("description"))
 
 
+def date_de_collecte(date_execution):
+    """Jour ou les offres de cette partition ont reellement ete collectees.
+
+    C'est le jour d'ecriture du JSON silver par la normalisation (il n'est
+    pas reecrit quand on relance seulement Spark). Avant, on prenait le jour
+    du chargement : recharger une ancienne journee faussait les dates.
+    """
+    try:
+        return date_modification(
+            BUCKET_SILVER, f"france_travail/date={date_execution}/offres.json"
+        )
+    except Exception:  # objet absent ou MinIO indisponible
+        logger.warning("Date de collecte inconnue pour %s : date du jour.", date_execution)
+        return date.today()
+
+
 def initialiser_schema(**_):
     creer_schema()
+    reparer_dates_collecte()
     charger_referentiels(
         [(f["id"], f["libelle"], f["categorie"]) for f in charger_postes()]
     )
@@ -191,7 +248,8 @@ def charger_entrepot(**context):
         competences=[(l, c) for l, c in competences.items()],
     )
 
-    aujourdhui = date.today()
+    aujourdhui = date_de_collecte(date_execution)
+    logger.info("Date de collecte retenue : %s.", aujourdhui)
     faits = [
         (
             o["id_offre"], o["code_rome"], o["code_insee"],
@@ -264,10 +322,23 @@ with DAG(
         python_callable=charger_entrepot,
     )
 
+    # dbt build = executer les modeles ET leurs tests, dans l'ordre des
+    # dependances. Les fichiers de travail de dbt vont dans /tmp pour ne
+    # pas encombrer le depot.
+    dbt_build = BashOperator(
+        task_id="dbt_build",
+        bash_command=(
+            "cd /opt/airflow/dbt && "
+            "/home/airflow/dbt-venv/bin/dbt build --profiles-dir . "
+            "--target-path /tmp/dbt/target --log-path /tmp/dbt/logs"
+        ),
+    )
+
     declencher_detecteur = TriggerDagRunOperator(
         task_id="declencher_detecteur",
         trigger_dag_id="detecteur_niches",
-        conf={"date": "{{ (dag_run.conf or {}).get('date', ds) }}"},
+        # la date reellement chargee (voir date_a_charger)
+        conf={"date": "{{ ti.xcom_pull(task_ids='charger_entrepot')['date'] }}"},
     )
 
-    schema >> chargement >> declencher_detecteur
+    schema >> chargement >> dbt_build >> declencher_detecteur

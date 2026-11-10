@@ -43,6 +43,11 @@ PRESETS = {
 
 # ================================================================ donnees
 
+# Table preparee chaque jour par dbt (dbt/models/marts/mart_offres_candidat.sql).
+REQUETE_MART = "SELECT * FROM analytique.mart_offres_candidat"
+
+# Meme resultat calcule directement sur l'etoile : utilise tant que dbt
+# n'a pas encore tourne (premiere installation).
 REQUETE_OFFRES = """
 SELECT f.id_offre, f.intitule, f.url_offre, f.id_poste, f.date_creation,
        f.jours_en_ligne, f.derniere_collecte,
@@ -89,7 +94,11 @@ def lire(requete):
 
 @st.cache_data(ttl=600, show_spinner="Chargement des offres…")
 def charger():
-    offres = c.preparer_offres(lire(REQUETE_OFFRES))
+    try:
+        brut = lire(REQUETE_MART)
+    except psycopg2.errors.UndefinedTable:
+        brut = lire(REQUETE_OFFRES)
+    offres = c.preparer_offres(brut)
     regions = lire(REQUETE_REGIONS)
     return offres, regions
 
