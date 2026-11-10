@@ -1,3 +1,7 @@
+# Images figees par empreinte (sha256) : la version qui tourne est
+# exactement celle qui a ete testee, et une mise a jour silencieuse de
+# "latest" ne peut plus casser le projet ni introduire une faille.
+# Pour mettre a jour : changer l'empreinte volontairement, puis retester.
 x-airflow-common: &airflow-common
   build:
     context: .
@@ -57,7 +61,7 @@ services:
   # Metabase technique d'Airflow (ne PAS y mettre les donnees metier)
   # -------------------------------------------------------------
   postgres-airflow:
-    image: postgres:15
+    image: postgres:15@sha256:9b1d34adbce1dd07ee6e94b4a2cf698884b89bd44a6c9c12f5da8f3acbfe4957
     container_name: pfe-postgres-airflow
     environment:
       POSTGRES_USER: airflow
@@ -78,7 +82,7 @@ services:
   # Entrepot de donnees : schema en etoile (dim_* / fait_*)
   # -------------------------------------------------------------
   postgres-dwh:
-    image: postgres:15
+    image: postgres:15@sha256:9b1d34adbce1dd07ee6e94b4a2cf698884b89bd44a6c9c12f5da8f3acbfe4957
     container_name: pfe-postgres-dwh
     environment:
       POSTGRES_USER: ${DWH_USER}
@@ -104,7 +108,7 @@ services:
   # Console web : http://localhost:9001
   # -------------------------------------------------------------
   minio:
-    image: quay.io/minio/minio:latest
+    image: quay.io/minio/minio@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e
     container_name: pfe-minio
     command: server /data --console-address ":9001"
     environment:
@@ -128,7 +132,7 @@ services:
   # pipeline avec sa politique de droits (securite/minio_pipeline_policy.json),
   # puis s'arrete. Rejouable sans effet de bord.
   minio-init:
-    image: quay.io/minio/mc:latest
+    image: quay.io/minio/mc@sha256:a7fe349ef4bd8521fb8497f55c6042871b2ae640607cf99d9bede5e9bdf11727
     container_name: pfe-minio-init
     depends_on:
       minio:

@@ -1,10 +1,10 @@
-# Charte graphique : palette bordeaux, claire.
+# Charte graphique « data / detection » : theme sombre, graphite + rouge signal (voir style.py).
 [theme]
-base = "light"
-primaryColor = "#7A1F3D"
-backgroundColor = "#FBF7F6"
-secondaryBackgroundColor = "#F4E9EB"
-textColor = "#2A1418"
+base = "dark"
+primaryColor = "#E0182D"
+backgroundColor = "#0E1014"
+secondaryBackgroundColor = "#1A1D24"
+textColor = "#EEF0F3"
 font = "sans serif"
 
 [server]

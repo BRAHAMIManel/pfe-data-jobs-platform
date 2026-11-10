@@ -1,7 +1,8 @@
 """
 Detecteur de niches IT — application finale.
 
-Parcours en 3 etapes : Mon CV -> Territoires -> Offres.
+Page d'accueil « Le marche » (marche.py), puis parcours en 3 etapes :
+Mon CV -> Territoires -> Offres.
 
 L'entrepot fournit les offres (DAG Airflow). L'application ne fait que
 lire : elle croise les offres avec le CV du candidat (calculs.py) et
@@ -17,6 +18,7 @@ import psycopg2
 import streamlit as st
 
 import calculs as c
+import marche
 import style as s
 from cv import CVIlisible, analyser_cv
 from transformation import charger_categories, charger_dictionnaire, charger_postes
@@ -177,7 +179,7 @@ VILLES_CONNUES = (
 
 def init_etat():
     defauts = {
-        "etape": 1,
+        "etape": 0,   # 0 = page d'accueil « Le marché »
         "competences": [],
         "annees": 2.0,
         "postes": ["de", "da", "cd"],
@@ -527,9 +529,9 @@ def etape_territoires():
     k2.metric("En ligne, < 14 jours", int(retenues["recente"].sum()))
     if n:
         k3.metric(
-            "Signaux de tension",
-            f"{pct(retenues['persistante'].mean())} · {pct(retenues['manque'].mean())} · "
-            f"{pct(retenues['republication'].mean())}",
+            "Signaux de tension (%)",
+            f"{retenues['persistante'].mean():.0%} · {retenues['manque'].mean():.0%} · "
+            f"{retenues['republication'].mean():.0%}".replace("%", ""),
             help="En ligne depuis plus de 30 jours · signalées « manque de candidats » · "
                  "republiées après retrait",
         )
@@ -750,7 +752,7 @@ def etape_offres():
             f'<p class="dn-muted" style="margin:8px 0 0">{commentaire}</p></div></div>'
             + s.barre("Tension", v["penurie"], s.BRIQUE, pct(v["penurie"]))
             + s.barre("Adéquation CV", v["adequation"], s.VERT_BARRE, pct(v["adequation"]))
-            + s.barre("Volume", v["volume"], s.BORDEAUX, mot(int(v["offres"]), "offre"))
+            + s.barre("Volume", v["volume"], s.ARDOISE, mot(int(v["offres"]), "offre"))
             + f'<p class="dn-muted" style="margin:12px 0 0">{pct(v["part_persistantes"])} des offres encore en ligne '
             f'après 30 jours · {pct(v["part_manque"])} signalées « manque de candidats » · '
             f'{pct(v["part_republications"])} republiées après retrait.</p>'
@@ -819,7 +821,9 @@ def etape_offres():
 # ================================================================= page
 
 st.markdown(s.bandeau(E.etape), unsafe_allow_html=True)
-with st.popover("Comment le score est calculé"):
+def aide_score():
+    """Explication du score : sous le bandeau, a droite, sur les etapes 1 a 3.
+    L'accueil « Le marche » n'affiche pas de score : pas de bouton."""
     st.markdown(
         f"""
 **Score d'opportunité (sur 100) = 45 % tension + 35 % adéquation au CV + 20 % volume d'offres.**
@@ -853,4 +857,15 @@ ce n'est pas une probabilité d'embauche.
 """
     )
 
-{1: etape_cv, 2: etape_territoires, 3: etape_offres}[E.etape]()
+
+if E.etape != 0:
+    _gauche, _, _droite = st.columns([1, 4, 1.4])
+    _gauche.button("◎ Le marché", on_click=aller, args=(0,), use_container_width=True)
+    with _droite.popover("Comment le score est calculé", use_container_width=True):
+        aide_score()
+
+def etape_marche():
+    marche.page(OFFRES, BMO, REFS, POSTES, CATEGORIE_DU_POSTE, CATEGORIES, aller, REGIONS)
+
+
+{0: etape_marche, 1: etape_cv, 2: etape_territoires, 3: etape_offres}[E.etape]()

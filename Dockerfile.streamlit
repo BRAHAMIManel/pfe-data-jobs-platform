@@ -1,4 +1,5 @@
-FROM python:3.11-slim
+# Image de base figee par empreinte (voir docker-compose.yml).
+FROM python:3.11-slim@sha256:d0d43a8b0c352c215cd1381f3f4d7ac34cf3440cd0415873451d7affca53a769
 
 RUN pip install --no-cache-dir \
     streamlit==1.45.1 \
@@ -7,11 +8,18 @@ RUN pip install --no-cache-dir \
     pdfplumber==0.11.4 \
     python-docx==1.1.2
 
+# Securite : l'application ne tourne pas en root. Si elle etait
+# compromise, l'attaquant n'aurait que les droits de ce compte, sans
+# pouvoir modifier le systeme du conteneur.
+RUN useradd --create-home --uid 10001 appli
+
 WORKDIR /app
 
 # Les modules partages avec Airflow (transformation, cv) sont montes
 # dans /scripts par docker-compose.
 ENV PYTHONPATH=/scripts
+
+USER appli
 
 CMD ["streamlit", "run", "app.py", \
      "--server.address=0.0.0.0", \
