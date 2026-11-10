@@ -10,6 +10,7 @@ import logging
 import os
 
 import psycopg2
+from psycopg2 import sql
 from psycopg2.extras import execute_values
 
 logger = logging.getLogger(__name__)
@@ -27,6 +28,53 @@ def connexion():
         user=os.getenv("DWH_USER"),
         password=os.getenv("DWH_PASSWORD"),
     )
+
+
+SCHEMAS_LUS_PAR_APPLI = ("public", "analytique", "analytique_referentiels")
+
+
+def creer_role_lecture():
+    """Compte de l'application : lecture seule (principe du moindre privilege).
+
+    L'application Streamlit n'a besoin que de LIRE l'entrepot. Elle se
+    connecte avec ce compte, et non plus avec le proprietaire de la base :
+    une faille dans l'application ne pourrait ni modifier ni supprimer de
+    donnees. Les droits par defaut (ALTER DEFAULT PRIVILEGES) couvrent aussi
+    les tables que dbt recree a chaque execution.
+
+    Nom et mot de passe : APP_DWH_USER et APP_DWH_PASSWORD (fichier .env).
+    Sans mot de passe defini, rien n'est fait (ancienne installation).
+    Rejouable sans effet de bord.
+    """
+    nom = os.getenv("APP_DWH_USER", "app_lecture")
+    mot_de_passe = os.getenv("APP_DWH_PASSWORD")
+    if not mot_de_passe:
+        logger.warning("APP_DWH_PASSWORD absent : compte en lecture seule non cree.")
+        return False
+
+    role = sql.Identifier(nom)
+    with connexion() as conn, conn.cursor() as cur:
+        cur.execute("SELECT 1 FROM pg_roles WHERE rolname = %s", (nom,))
+        if cur.fetchone() is None:
+            cur.execute(sql.SQL("CREATE ROLE {} LOGIN").format(role))
+        cur.execute(
+            sql.SQL("ALTER ROLE {} WITH LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE "
+                    "PASSWORD {}").format(role, sql.Literal(mot_de_passe))
+        )
+        cur.execute(sql.SQL("GRANT CONNECT ON DATABASE {} TO {}").format(
+            sql.Identifier(os.getenv("DWH_DB")), role))
+        for nom_schema in SCHEMAS_LUS_PAR_APPLI:
+            schema = sql.Identifier(nom_schema)
+            cur.execute(sql.SQL("CREATE SCHEMA IF NOT EXISTS {}").format(schema))
+            # Personne d'autre que le proprietaire ne cree d'objets.
+            cur.execute(sql.SQL("REVOKE CREATE ON SCHEMA {} FROM PUBLIC").format(schema))
+            cur.execute(sql.SQL("GRANT USAGE ON SCHEMA {} TO {}").format(schema, role))
+            cur.execute(sql.SQL("GRANT SELECT ON ALL TABLES IN SCHEMA {} TO {}").format(schema, role))
+            cur.execute(sql.SQL(
+                "ALTER DEFAULT PRIVILEGES IN SCHEMA {} GRANT SELECT ON TABLES TO {}"
+            ).format(schema, role))
+    logger.info("Compte %s : lecture seule sur %s.", nom, ", ".join(SCHEMAS_LUS_PAR_APPLI))
+    return True
 
 
 def creer_schema():

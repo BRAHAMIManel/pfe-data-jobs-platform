@@ -10,10 +10,16 @@ x-airflow-common: &airflow-common
     AIRFLOW__LOGGING__LOGGING_LEVEL: INFO
     PYTHONPATH: /opt/airflow/scripts
 
+    # --- Securite Airflow : chiffrement des secrets et des sessions ---
+    AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY:-}
+    AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW_SECRET_KEY:-}
+
     # --- MinIO (Data Lake) ---
+    # Compte dedie au pipeline, limite a raw et silver (lecture/ecriture,
+    # SANS suppression). Le compte root ne sert qu'a l'administration.
     MINIO_ENDPOINT: http://minio:9000
-    MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
-    MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+    MINIO_ACCESS_KEY: ${MINIO_PIPELINE_USER}
+    MINIO_SECRET_KEY: ${MINIO_PIPELINE_PASSWORD}
     MINIO_BUCKET_RAW: raw
     MINIO_BUCKET_SILVER: silver
     MINIO_BUCKET_GOLD: gold
@@ -28,6 +34,9 @@ x-airflow-common: &airflow-common
     DWH_DB: ${DWH_DB}
     DWH_USER: ${DWH_USER}
     DWH_PASSWORD: ${DWH_PASSWORD}
+    # Compte en lecture seule cree pour l'application (dwh.creer_role_lecture)
+    APP_DWH_USER: ${APP_DWH_USER:-app_lecture}
+    APP_DWH_PASSWORD: ${APP_DWH_PASSWORD}
   volumes:
     - ./dags:/opt/airflow/dags
     - ./logs:/opt/airflow/logs
@@ -40,6 +49,8 @@ x-airflow-common: &airflow-common
   depends_on:
     postgres-airflow:
       condition: service_healthy
+    minio-init:
+      condition: service_completed_successfully
 
 services:
   # -------------------------------------------------------------
@@ -74,7 +85,9 @@ services:
       POSTGRES_PASSWORD: ${DWH_PASSWORD}
       POSTGRES_DB: ${DWH_DB}
     ports:
-      - "5433:5432"   # accessible depuis DBeaver / dbt en local
+      # 127.0.0.1 : joignable depuis CE PC seulement (DBeaver), jamais
+      # depuis le reseau (Wi-Fi public, bibliotheque...).
+      - "127.0.0.1:5433:5432"
     volumes:
       - postgres-dwh-data:/var/lib/postgresql/data
     healthcheck:
@@ -98,8 +111,8 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
     volumes:
       - minio-data:/data
     healthcheck:
@@ -111,7 +124,9 @@ services:
     networks:
       - pfe-net
 
-  # Cree les 3 buckets de l'architecture medallion puis s'arrete
+  # Cree les 3 buckets de l'architecture medallion, puis le compte du
+  # pipeline avec sa politique de droits (securite/minio_pipeline_policy.json),
+  # puis s'arrete. Rejouable sans effet de bord.
   minio-init:
     image: quay.io/minio/mc:latest
     container_name: pfe-minio-init
@@ -125,11 +140,20 @@ services:
       mc mb --ignore-existing local/silver &&
       mc mb --ignore-existing local/gold &&
       echo '--- buckets raw / silver / gold prets ---' &&
+      (mc admin policy create local pipeline /securite/minio_pipeline_policy.json || true) &&
+      mc admin policy info local pipeline > /dev/null &&
+      mc admin user add local $${MINIO_PIPELINE_USER} $${MINIO_PIPELINE_PASSWORD} &&
+      (mc admin policy attach local pipeline --user $${MINIO_PIPELINE_USER} || true) &&
+      echo '--- compte pipeline pret : raw et silver, sans suppression ---' &&
       exit 0
       "
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_PIPELINE_USER: ${MINIO_PIPELINE_USER}
+      MINIO_PIPELINE_PASSWORD: ${MINIO_PIPELINE_PASSWORD}
+    volumes:
+      - ./securite:/securite:ro
     networks:
       - pfe-net
 
@@ -166,7 +190,7 @@ services:
     container_name: pfe-airflow-webserver
     command: webserver
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
@@ -190,12 +214,13 @@ services:
       DWH_HOST: postgres-dwh
       DWH_PORT: 5432
       DWH_DB: ${DWH_DB}
-      DWH_USER: ${DWH_USER}
-      DWH_PASSWORD: ${DWH_PASSWORD}
+      # Compte en LECTURE SEULE : l'application ne peut rien modifier.
+      DWH_USER: ${APP_DWH_USER:-app_lecture}
+      DWH_PASSWORD: ${APP_DWH_PASSWORD}
     ports:
-      - "8501:8501"
+      - "127.0.0.1:8501:8501"
     volumes:
-      - ./app:/app
+      - ./app:/app:ro
       # Lecture du CV et dictionnaire de competences partages avec Airflow
       - ./scripts:/scripts:ro
     restart: unless-stopped

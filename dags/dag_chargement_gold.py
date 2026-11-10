@@ -30,6 +30,7 @@ from dwh import (
     charger_pont_competences,
     charger_referentiels,
     completer_offres_anciennes,
+    creer_role_lecture,
     creer_schema,
     reparer_dates_collecte,
 )
@@ -148,6 +149,7 @@ def date_de_collecte(date_execution):
 
 def initialiser_schema(**_):
     creer_schema()
+    creer_role_lecture()
     reparer_dates_collecte()
     charger_referentiels(
         [(f["id"], f["libelle"], f["categorie"]) for f in charger_postes()]
