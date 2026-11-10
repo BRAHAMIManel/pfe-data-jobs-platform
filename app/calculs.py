@@ -23,10 +23,16 @@ SEUIL_JOURS = 30        # au-dela, une offre est "persistante"
 LISSAGE = 20            # poids de la moyenne nationale, en offres fictives
 EVENEMENTS_MINIMUM = 3  # l'a priori contient au moins 3 signaux attendus
 
-# Poids des signaux de penurie dans l'indice. Provisoire : poids egaux en
-# attendant le calibrage sur l'enquete BMO de France Travail (la mesure du
-# 10/11 montre que persistance et republications divergent : Spearman -0,30
-# par region ; il faut une reference externe pour les departager).
+# Poids des signaux de tension dans l'indice : egaux, et c'est un choix
+# justifie par la mesure. Le calibrage sur l'enquete BMO 2026 (10/11,
+# scripts/calibrage_bmo.py, 59 departements) donne des correlations de
+# Spearman de +0,12 (persistance), +0,05 (manque) et +0,05 (republications),
+# toutes avec un intervalle a 95 % contenant 0 : aucun signal n'est plus
+# fiable que les autres. Ponderer selon ces chiffres reviendrait a ajuster
+# des poids sur du bruit. A refaire avec plus d'historique de collecte.
+# "penurie" dans le code = "tension relative" a l'ecran : 0,5 = moyenne
+# nationale ; le marche IT etant sature pour beaucoup de profils, l'indice
+# repere ou il l'est moins qu'ailleurs, pas un manque absolu de candidats.
 POIDS_SIGNAUX = {"persistance": 1 / 3, "manque": 1 / 3, "republication": 1 / 3}
 MIN_OFFRES_CONSEIL = 5  # en dessous, pas de competences a apprendre
 JOURS_RECENTS = 14      # offres affichees par defaut

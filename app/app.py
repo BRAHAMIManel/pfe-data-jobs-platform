@@ -120,6 +120,51 @@ if OFFRES.empty:
     st.stop()
 
 REFS = c.references(OFFRES)
+
+# Repere officiel : enquete BMO 2026 (France Travail), 6 metiers
+# informatiques, charge par dbt (seed bmo_2026_informatique). Affiche a
+# cote du score, jamais dedans : voir l'explication du score.
+REQUETE_BMO = """
+SELECT b.departement, d.code_region,
+       SUM(b.projets) AS projets, SUM(b.difficiles) AS difficiles
+FROM analytique_referentiels.bmo_2026_informatique b
+LEFT JOIN ref_departement d ON d.departement = b.departement
+GROUP BY b.departement, d.code_region
+"""
+BMO_MIN_PROJETS = 20  # en dessous, le departement est trop petit : on prend la region
+
+
+@st.cache_data(ttl=3600)
+def charger_bmo():
+    try:
+        return lire(REQUETE_BMO)
+    except psycopg2.Error:
+        return pd.DataFrame(columns=["departement", "code_region", "projets", "difficiles"])
+
+
+BMO = charger_bmo()
+
+
+def repere_bmo(departements, codes_region):
+    """Phrase « repere officiel » pour des departements, ou leur region."""
+    if BMO.empty:
+        return ""
+    national = BMO["difficiles"].sum() / BMO["projets"].sum()
+    dep = BMO[BMO["departement"].isin(departements)]
+    if dep["projets"].sum() >= BMO_MIN_PROJETS:
+        part, lieu = dep["difficiles"].sum() / dep["projets"].sum(), (
+            "dans ce département" if len(departements) == 1 else "dans ces départements")
+    else:
+        reg = BMO[BMO["code_region"].isin(codes_region)]
+        if reg["projets"].sum() < BMO_MIN_PROJETS:
+            return ""
+        part, lieu = reg["difficiles"].sum() / reg["projets"].sum(), "dans la région"
+    return (
+        f'<p class="dn-muted" style="margin:10px 0 0;font-size:13px"><b>Repère officiel</b> · '
+        f"Enquête BMO 2026 de France Travail : {pct(part)} des projets de recrutement en "
+        f"informatique sont jugés difficiles par les employeurs {lieu} (France : {pct(national)}). "
+        "Ce repère ne distingue pas débutants et expérimentés : il n'entre pas dans le score.</p>"
+    )
 NOMS_REGIONS = dict(zip(REGIONS["code"], REGIONS["nom"]))
 VILLES_CONNUES = (
     OFFRES.groupby("cle_ville")
@@ -283,7 +328,7 @@ def bloc_postes_recommandes():
                 f'<b>{escape(r.libelle)}</b>{s.badge(r.fiabilite)}'
                 f'<span style="float:right;font:800 18px Sora,sans-serif;color:{s.BORDEAUX_FONCE}">{r.score}<span style="font-size:13px;font-weight:600">\u00a0/\u00a0100</span></span>'
                 f'<div class="dn-muted" style="font-size:13px">{mot(int(r.offres), "offre compatible", "offres compatibles")} · '
-                f'adéquation {pct(r.adequation)} · pénurie {pct(r.penurie)}</div>'
+                f'adéquation {pct(r.adequation)} · tension {pct(r.penurie)}</div>'
                 f'<div class="dn-muted" style="font-size:12.5px;font-style:italic">Ex. : {exemples}</div></div>',
                 unsafe_allow_html=True,
             )
@@ -292,7 +337,7 @@ def bloc_postes_recommandes():
             else:
                 action.button("Ajouter", key=f"ajout_{r.id_poste}", on_click=ajouter_poste, args=(r.id_poste,))
         st.caption(
-            "Même calcul que pour les villes : pénurie, adéquation à ton CV et nombre d'offres, "
+            "Même calcul que pour les villes : tension, adéquation à ton CV et nombre d'offres, "
             "dans ta zone et pour le contrat choisi."
         )
 
@@ -422,14 +467,18 @@ def tableau_classement(lignes, niveau, cle):
         "Fiabilité": lignes["fiabilite"],
         "Offres": lignes["offres"],
         "< 14 j": lignes["recentes"].astype(int),
-        "Pénurie": (lignes["penurie"] * 100).round().astype(int),
+        "Tension": (lignes["penurie"] * 100).round().astype(int),
         "Opportunité": lignes["score"],
     })
     return st.dataframe(
         vue, hide_index=True, use_container_width=True, key=cle,
         on_select="rerun", selection_mode="multi-row",
         column_config={
-            "Pénurie": st.column_config.NumberColumn(format="%d %%", help="0 % = recrutements faciles, 100 % = forte pénurie"),
+            "Tension": st.column_config.NumberColumn(
+                format="%d %%",
+                help="Tension relative : 50 % = moyenne nationale ; plus c'est haut, "
+                     "moins le marché semble saturé ici qu'ailleurs",
+            ),
             "Opportunité": st.column_config.ProgressColumn(
                 format="%d / 100", min_value=0, max_value=100,
                 help="Score sur 100. Ce n'est pas une probabilité d'embauche.",
@@ -467,7 +516,7 @@ def etape_territoires():
     st.markdown(
         f'<p class="dn-muted"><b>{escape(libelle_zone())}</b> · pour '
         f'{escape(", ".join(POSTES[p] for p in E.postes))}. Score d\'opportunité sur 100 : '
-        "pénurie de candidats, adéquation à ton CV et volume d'offres. Coche une ou plusieurs lignes du "
+        "tension du marché, adéquation à ton CV et volume d'offres. Coche une ou plusieurs lignes du "
         "classement, ou prends toute la liste.</p>",
         unsafe_allow_html=True,
     )
@@ -478,7 +527,7 @@ def etape_territoires():
     k2.metric("En ligne, < 14 jours", int(retenues["recente"].sum()))
     if n:
         k3.metric(
-            "Signaux de pénurie",
+            "Signaux de tension",
             f"{pct(retenues['persistante'].mean())} · {pct(retenues['manque'].mean())} · "
             f"{pct(retenues['republication'].mean())}",
             help="En ligne depuis plus de 30 jours · signalées « manque de candidats » · "
@@ -683,11 +732,12 @@ def etape_offres():
     gauche, droite = st.columns([1, 1.2], gap="large")
     with gauche:
         commentaire = (
-            "Marché tendu : les employeurs ont plus de mal qu'ailleurs à recruter."
+            "Marché plus tendu qu'ailleurs : les employeurs y ont plus de mal à recruter."
             if v["indice"] > 1.15 else
-            "Marché fluide : les postes se pourvoient vite, postule tôt."
+            "Marché plus saturé qu'ailleurs : les postes se pourvoient vite, postule tôt et "
+            "mets en avant tes compétences rares."
             if v["indice"] < 0.95 else
-            "Pénurie proche de la moyenne nationale."
+            "Tension proche de la moyenne nationale."
         )
         if v["fiabilite"] != "Fiable":
             commentaire += " Peu d'offres ici : à lire comme une tendance."
@@ -698,12 +748,15 @@ def etape_offres():
             + s.jauge(int(v["score"]))
             + f'<div style="flex:1;min-width:160px"><span class="dn-pill dure" style="margin:0">{c.etiquette(v["score"], v["fiabilite"])}</span>'
             f'<p class="dn-muted" style="margin:8px 0 0">{commentaire}</p></div></div>'
-            + s.barre("Pénurie", v["penurie"], s.BRIQUE, pct(v["penurie"]))
+            + s.barre("Tension", v["penurie"], s.BRIQUE, pct(v["penurie"]))
             + s.barre("Adéquation CV", v["adequation"], s.VERT_BARRE, pct(v["adequation"]))
             + s.barre("Volume", v["volume"], s.BORDEAUX, mot(int(v["offres"]), "offre"))
             + f'<p class="dn-muted" style="margin:12px 0 0">{pct(v["part_persistantes"])} des offres encore en ligne '
             f'après 30 jours · {pct(v["part_manque"])} signalées « manque de candidats » · '
-            f'{pct(v["part_republications"])} republiées après retrait.</p></div>',
+            f'{pct(v["part_republications"])} republiées après retrait.</p>'
+            + repere_bmo(lignes["departement"].dropna().unique().tolist(),
+                         lignes["code_region"].dropna().unique().tolist())
+            + '</div>',
             unsafe_allow_html=True,
         )
     with droite:
@@ -769,17 +822,28 @@ st.markdown(s.bandeau(E.etape), unsafe_allow_html=True)
 with st.popover("Comment le score est calculé"):
     st.markdown(
         f"""
-**Score d'opportunité (sur 100) = 45 % pénurie + 35 % adéquation au CV + 20 % volume d'offres.**
+**Score d'opportunité (sur 100) = 45 % tension + 35 % adéquation au CV + 20 % volume d'offres.**
 
 Le score classe les territoires selon des signaux de tension et l'adéquation au profil ;
 ce n'est pas une probabilité d'embauche.
 
-- **Pénurie** : trois signaux, les offres encore en ligne après {c.SEUIL_JOURS} jours, celles que
-  France Travail signale comme manquant de candidats, et les postes **republiés** après avoir été
-  retirés (même employeur, même intitulé, même ville ; hors ESN, intérim et plateformes). Chacun est
-  lissé vers la moyenne nationale ({pct(REFS['persistance'])}, {pct(REFS['manque'])} et
+- **Tension (relative)** : le marché informatique est saturé pour beaucoup de profils, surtout
+  débutants. Le score ne prétend donc pas qu'il « manque » des candidats : il compare chaque
+  territoire à la moyenne nationale et repère où la concurrence semble **plus faible qu'ailleurs**.
+  Un territoire dans la moyenne nationale a une tension de 50 %.
+- **Trois signaux d'offres, à poids égaux** : les offres encore en ligne après {c.SEUIL_JOURS} jours,
+  celles que France Travail signale comme manquant de candidats, et les postes **republiés** après
+  avoir été retirés (même employeur, même intitulé, même ville ; hors ESN, intérim et plateformes).
+  Chacun est lissé vers la moyenne nationale ({pct(REFS['persistance'])}, {pct(REFS['manque'])} et
   {pct(REFS['republication'])} aujourd'hui), pour qu'une ville avec 3 offres ne passe pas devant
-  Paris par hasard. Un territoire dans la moyenne nationale a une pénurie de 50 %.
+  Paris par hasard.
+- **Pourquoi des poids égaux** : comparés à l'enquête officielle BMO 2026 sur 59 départements,
+  aucun des trois signaux ne s'est montré plus fiable que les autres (corrélations proches de 0).
+  Rien ne justifie d'en privilégier un.
+- **Repère BMO** : affiché sur chaque ville, mais **hors du score**. BMO mesure la difficulté
+  déclarée par les employeurs sur l'année, tous profils confondus, sans distinguer débutants et
+  expérimentés. Or le marché est saturé surtout pour les débutants : l'ajouter au score
+  avantagerait des territoires où un débutant n'est pas forcément plus recherché.
 - **Adéquation** : pour chaque offre, compétences demandées présentes dans ton CV ÷ compétences demandées.
 - **Volume** : nombre d'offres compatibles, sur une échelle logarithmique.
 - Seules comptent les offres qui partagent au moins {c.MIN_COMMUNES} compétences avec ton CV et qui
