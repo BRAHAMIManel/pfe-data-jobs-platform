@@ -12,6 +12,8 @@ with competences as (
 
 select
     o.*,
-    coalesce(c.competences, array[]::text[]) as competences
+    coalesce(c.competences, array[]::text[]) as competences,
+    coalesce(r.republication_retenue, false)  as republication
 from {{ ref('stg_offres') }} o
 left join competences c on c.id_offre = o.id_offre
+left join {{ ref('int_republications') }} r on r.id_offre = o.id_offre

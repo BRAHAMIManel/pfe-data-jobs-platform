@@ -22,6 +22,12 @@ from transformation import MOTIF_ARRONDISSEMENT
 SEUIL_JOURS = 30        # au-dela, une offre est "persistante"
 LISSAGE = 20            # poids de la moyenne nationale, en offres fictives
 EVENEMENTS_MINIMUM = 3  # l'a priori contient au moins 3 signaux attendus
+
+# Poids des signaux de penurie dans l'indice. Provisoire : poids egaux en
+# attendant le calibrage sur l'enquete BMO de France Travail (la mesure du
+# 10/11 montre que persistance et republications divergent : Spearman -0,30
+# par region ; il faut une reference externe pour les departager).
+POIDS_SIGNAUX = {"persistance": 1 / 3, "manque": 1 / 3, "republication": 1 / 3}
 MIN_OFFRES_CONSEIL = 5  # en dessous, pas de competences a apprendre
 JOURS_RECENTS = 14      # offres affichees par defaut
 ECART_NIVEAU = 2        # annees d'experience tolerees au-dela du CV
@@ -51,6 +57,11 @@ def preparer_offres(df):
     df["recente"] = df["en_ligne"] & (df["age_jours"] <= JOURS_RECENTS)
     df["persistante"] = df["jours_en_ligne"] > SEUIL_JOURS
     df["manque"] = df["manque"].fillna(False).astype(bool)
+    # Republication retenue par dbt (int_republications) ; absente si
+    # l'application lit l'ancienne requete de repli.
+    if "republication" not in df:
+        df["republication"] = False
+    df["republication"] = df["republication"].fillna(False).astype(bool)
     df["competences"] = df["competences"].apply(
         lambda l: sorted(set(l)) if isinstance(l, (list, tuple)) else []
     )
@@ -70,10 +81,11 @@ def preparer_offres(df):
 
 
 def references(df):
-    """Taux nationaux des deux signaux de penurie, sur toutes les offres."""
+    """Taux nationaux des trois signaux de penurie, sur toutes les offres."""
     return {
         "persistance": float(df["persistante"].mean()) if len(df) else 0.0,
         "manque": float(df["manque"].mean()) if len(df) else 0.0,
+        "republication": float(df["republication"].mean()) if len(df) else 0.0,
     }
 
 
@@ -130,11 +142,19 @@ def masque_zone(df, zone):
     return pd.Series(True, index=df.index)
 
 
+CONTRATS = ["Tous", "CDI", "CDI ou CDD", "Freelance", "Intérim", "Alternance"]
+
+
 def masque_contrat(df, contrat):
     if contrat == "CDI":
         return df["type_contrat"] == "CDI"
     if contrat == "CDI ou CDD":
         return df["type_contrat"].isin(["CDI", "CDD"])
+    if contrat == "Freelance":
+        # France Travail : "LIB" = profession liberale (missions independantes)
+        return df["type_contrat"] == "LIB"
+    if contrat == "Intérim":
+        return df["type_contrat"] == "MIS"
     if contrat == "Alternance":
         return df["alternance"].fillna(False).astype(bool)
     return pd.Series(True, index=df.index)
@@ -190,15 +210,26 @@ def penurie_depuis_indice(indice):
     return (indice - 0.5).clip(0, 1)
 
 
-def indice_penurie(offres, persistantes, manque, refs):
-    """1,00 = marche moyen. Moyenne des deux signaux quand ils existent."""
-    tp, tm = refs["persistance"], refs["manque"]
-    signaux = []
-    if tp > 0:
-        signaux.append(_signal(persistantes, offres, tp))
-    if tm > 0:
-        signaux.append(_signal(manque, offres, tm))
-    return sum(signaux) / len(signaux) if signaux else offres * 0 + 1.0
+def indice_penurie(t, refs):
+    """1,00 = marche moyen. Moyenne ponderee des signaux disponibles.
+
+    `t` : une ligne par territoire (ou par poste), avec les colonnes
+    offres, persistantes, manque, republications. Un signal absent au
+    niveau national (taux 0) est ignore et les poids restants sont
+    renormalises.
+    """
+    evenements = {
+        "persistance": t["persistantes"],
+        "manque": t["manque"],
+        "republication": t["republications"],
+    }
+    total, poids_total = 0, 0
+    for nom, poids in POIDS_SIGNAUX.items():
+        taux = refs.get(nom, 0)
+        if taux > 0 and poids > 0:
+            total = total + poids * _signal(evenements[nom], t["offres"], taux)
+            poids_total += poids
+    return total / poids_total if poids_total else t["offres"] * 0 + 1.0
 
 
 def noter_territoires(offres, niveau, refs, volume_max=None):
@@ -217,6 +248,7 @@ def noter_territoires(offres, niveau, refs, volume_max=None):
         "offres": g.size(),
         "persistantes": g["persistante"].sum(),
         "manque": g["manque"].sum(),
+        "republications": g["republication"].sum(),
         "recentes": g["recente"].sum(),
         "mediane_jours": g["jours_en_ligne"].median(),
         "adequation": g["adequation"].mean(),
@@ -232,7 +264,7 @@ def noter_territoires(offres, niveau, refs, volume_max=None):
         t["departement"] = None
         t["nb_villes"] = g["cle_ville"].nunique()
 
-    t["indice"] = indice_penurie(t["offres"], t["persistantes"], t["manque"], refs)
+    t["indice"] = indice_penurie(t, refs)
 
     t["penurie"] = penurie_depuis_indice(t["indice"])
     maxi = volume_max or t["offres"].max()
@@ -247,6 +279,7 @@ def noter_territoires(offres, niveau, refs, volume_max=None):
     t["fiabilite"] = t["offres"].map(fiabilite)
     t["part_persistantes"] = t["persistantes"] / t["offres"]
     t["part_manque"] = t["manque"] / t["offres"]
+    t["part_republications"] = t["republications"] / t["offres"]
     t.index.name = "code"
     # Un territoire "Fragile" (moins de 10 offres) peut afficher un bon
     # score par hasard : il passe apres tous les autres dans le classement.
@@ -355,13 +388,14 @@ def recommander_postes(offres, refs, postes_libelles, exemples=3):
         "offres": g.size(),
         "persistantes": g["persistante"].sum(),
         "manque": g["manque"].sum(),
+        "republications": g["republication"].sum(),
         "recentes": g["recente"].sum(),
         "adequation": g["adequation"].mean(),
         "region": None,
         "code_region": None,
     })
 
-    r["indice"] = indice_penurie(r["offres"], r["persistantes"], r["manque"], refs)
+    r["indice"] = indice_penurie(r, refs)
     r["penurie"] = penurie_depuis_indice(r["indice"])
     r["volume"] = np.log1p(r["offres"]) / np.log1p(r["offres"].max())
     r["score"] = (

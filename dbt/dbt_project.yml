@@ -11,6 +11,7 @@ profile: pfe
 
 model-paths: ["models"]
 test-paths: ["tests"]
+seed-paths: ["seeds"]
 target-path: "target"
 clean-targets: ["target", "logs"]
 
@@ -18,8 +19,14 @@ models:
   pfe_niches:
     staging:
       +materialized: view    # toujours a jour, rien a stocker
+    intermediate:
+      +materialized: table   # calculs intermediaires reutilises
     marts:
       +materialized: table   # lu par l'application : calcule une fois
+
+seeds:
+  pfe_niches:
+    +schema: referentiels    # tables de reference versionnees (CSV)
 
 data_tests:
   pfe_niches:

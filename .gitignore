@@ -18,3 +18,5 @@ offres_*.json
 # dbt : fichiers de travail regeneres a chaque execution
 dbt/target/
 dbt/logs/
+# dbt : identifiant anonyme genere localement
+dbt/.user.yml

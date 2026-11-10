@@ -1,0 +1,19 @@
+version: 2
+
+models:
+  - name: int_republications
+    description: "Offres qui republient un poste deja retire, et si elles comptent dans le signal de penurie."
+    config:
+      materialized: table
+    columns:
+      - name: id_offre
+        data_tests:
+          - unique
+          - not_null
+          - relationships:
+              to: source('entrepot', 'fait_offre')
+              field: id_offre
+      - name: ecart_jours
+        data_tests: [not_null]
+      - name: republication_retenue
+        data_tests: [not_null]

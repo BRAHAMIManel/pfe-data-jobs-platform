@@ -390,7 +390,7 @@ def etape_cv():
             )
             col2.slider("Rayon (km)", 10, 150, step=10, key="zone_rayon")
 
-        st.selectbox("Contrat", ["Tous", "CDI", "CDI ou CDD", "Alternance"], key="contrat")
+        st.selectbox("Contrat", c.CONTRATS, key="contrat")
 
     if not E.competences:
         st.info("Dépose ton CV ou ajoute tes compétences pour continuer.")
@@ -479,8 +479,10 @@ def etape_territoires():
     if n:
         k3.metric(
             "Signaux de pénurie",
-            f"{pct(retenues['persistante'].mean())} · {pct(retenues['manque'].mean())}",
-            help="En ligne depuis plus de 30 jours · signalées « manque de candidats »",
+            f"{pct(retenues['persistante'].mean())} · {pct(retenues['manque'].mean())} · "
+            f"{pct(retenues['republication'].mean())}",
+            help="En ligne depuis plus de 30 jours · signalées « manque de candidats » · "
+                 "republiées après retrait",
         )
     jour = OFFRES["jour_collecte"].iloc[0]
     k4.metric("Dernière collecte", pd.to_datetime(jour).strftime("%d/%m/%Y"))
@@ -700,7 +702,8 @@ def etape_offres():
             + s.barre("Adéquation CV", v["adequation"], s.VERT_BARRE, pct(v["adequation"]))
             + s.barre("Volume", v["volume"], s.BORDEAUX, mot(int(v["offres"]), "offre"))
             + f'<p class="dn-muted" style="margin:12px 0 0">{pct(v["part_persistantes"])} des offres encore en ligne '
-            f'après 30 jours · {pct(v["part_manque"])} signalées « manque de candidats ».</p></div>',
+            f'après 30 jours · {pct(v["part_manque"])} signalées « manque de candidats » · '
+            f'{pct(v["part_republications"])} republiées après retrait.</p></div>',
             unsafe_allow_html=True,
         )
     with droite:
@@ -771,10 +774,12 @@ with st.popover("Comment le score est calculé"):
 Le score classe les territoires selon des signaux de tension et l'adéquation au profil ;
 ce n'est pas une probabilité d'embauche.
 
-- **Pénurie** : deux signaux, les offres encore en ligne après {c.SEUIL_JOURS} jours et celles que
-  France Travail signale comme manquant de candidats. Chacun est lissé vers la moyenne nationale
-  ({pct(REFS['persistance'])} et {pct(REFS['manque'])} aujourd'hui), pour qu'une ville avec 3 offres
-  ne passe pas devant Paris par hasard. Un territoire dans la moyenne nationale a une pénurie de 50 %.
+- **Pénurie** : trois signaux, les offres encore en ligne après {c.SEUIL_JOURS} jours, celles que
+  France Travail signale comme manquant de candidats, et les postes **republiés** après avoir été
+  retirés (même employeur, même intitulé, même ville ; hors ESN, intérim et plateformes). Chacun est
+  lissé vers la moyenne nationale ({pct(REFS['persistance'])}, {pct(REFS['manque'])} et
+  {pct(REFS['republication'])} aujourd'hui), pour qu'une ville avec 3 offres ne passe pas devant
+  Paris par hasard. Un territoire dans la moyenne nationale a une pénurie de 50 %.
 - **Adéquation** : pour chaque offre, compétences demandées présentes dans ton CV ÷ compétences demandées.
 - **Volume** : nombre d'offres compatibles, sur une échelle logarithmique.
 - Seules comptent les offres qui partagent au moins {c.MIN_COMMUNES} compétences avec ton CV et qui

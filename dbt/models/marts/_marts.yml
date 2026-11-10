@@ -10,3 +10,5 @@ models:
         data_tests: [not_null]
       - name: competences
         data_tests: [not_null]
+      - name: republication
+        data_tests: [not_null]

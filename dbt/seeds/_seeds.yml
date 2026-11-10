@@ -1,0 +1,27 @@
+version: 2
+
+seeds:
+  - name: intermediaires
+    description: >
+      Employeurs dont les republications ne signalent pas une penurie :
+      noms de remplacement, plateformes, forums, ESN, interim, cabinets.
+      Liste versionnee dans Git : chaque ajout est visible et justifie
+      (colonne raison). Construite a partir de scripts/mesure_signaux.py.
+      Les motifs sont en minuscules, sans accents.
+    config:
+      column_types:
+        motif: text
+        mode: text
+        type: text
+        raison: text
+    columns:
+      - name: motif
+        data_tests: [unique, not_null]
+      - name: mode
+        data_tests:
+          - accepted_values:
+              values: ['exact', 'contient']
+      - name: type
+        data_tests:
+          - accepted_values:
+              values: ['anonyme', 'forum', 'plateforme', 'esn', 'interim', 'cabinet', 'portage']
