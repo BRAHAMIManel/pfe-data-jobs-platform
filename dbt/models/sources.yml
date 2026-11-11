@@ -69,6 +69,13 @@ sources:
                   field: departement
                   config:
                     severity: warn   # un departement inconnu ne bloque pas
+                    # Exclusion voulue : les collectivites d'outre-mer
+                    # (975 Saint-Pierre-et-Miquelon, 977 Saint-Barthelemy,
+                    # 978 Saint-Martin, 986 Wallis-et-Futuna, 987 Polynesie,
+                    # 988 Nouvelle-Caledonie) ne sont pas des departements et
+                    # n'appartiennent a aucune des 18 regions. Elles restent
+                    # dans l'entrepot mais sont hors du perimetre de l'appli.
+                    where: "departement not in ('975', '977', '978', '986', '987', '988')"
       - name: dim_entreprise
         columns:
           - name: id_entreprise

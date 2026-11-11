@@ -4,7 +4,8 @@ Tests du calcul du score d'opportunite (app/calculs.py).
 Score d'un territoire, sur 100 :
     100 x ( 0,45 x tension + 0,35 x adequation au CV + 0,20 x volume )
 
-On verifie les proprietes que le jury peut demander de prouver : le score
+On verifie: 
+le score
 reste entre 0 et 100, la moyenne nationale vaut 50 de tension, plus de
 signaux de tension donne un score plus haut, un petit territoire ne
 s'envole pas sur une seule offre, et le croisement avec le CV est juste.
