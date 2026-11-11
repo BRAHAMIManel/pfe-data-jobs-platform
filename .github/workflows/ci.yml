@@ -1,0 +1,64 @@
+# Integration continue : a chaque push et a chaque pull request, GitHub
+# relance tous les controles. Une modification qui casse un test, le
+# projet dbt ou qui contient un secret est signalee en rouge.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  tests:
+    name: Tests Python (pytest, dont PySpark)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - uses: actions/setup-java@v4   # PySpark a besoin de Java
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Installer les dependances
+        run: pip install -r requirements.txt
+      - name: Lancer les tests
+        run: python -m pytest
+
+  dbt:
+    name: Projet dbt valide
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Installer dbt
+        run: pip install dbt-core==1.8.8 dbt-postgres==1.8.2
+      - name: Verifier modeles, tests et seeds (sans base de donnees)
+        working-directory: dbt
+        env:
+          DWH_DB: ci
+          DWH_USER: ci
+          DWH_PASSWORD: ci
+        run: dbt parse --profiles-dir .
+
+  securite:
+    name: Securite (secrets et failles connues)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0              # tout l'historique, pour y chercher des secrets
+      - name: Aucun secret dans le depot (gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Failles connues des bibliotheques (pip-audit)
+        run: |
+          pip install pip-audit
+          pip-audit -r requirements.txt

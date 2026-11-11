@@ -96,6 +96,13 @@ header[data-testid="stHeader"] {{ background: transparent; }}
   text-transform: uppercase; color: {ENCRE}; margin: 22px 0 10px;
   padding-left: 10px; border-left: 3px solid {ROUGE}; }}
 .dn-muted {{ color: {GRIS}; font-size: 14px; }}
+.dn-cta {{ display: inline-flex; align-items: center; gap: 8px; padding: 9px 18px; border-radius: 999px;
+  background: {ROUGE}; color: #fff !important; font-weight: 800; text-decoration: none !important;
+  white-space: nowrap; transition: background .15s ease; }}
+.dn-cta:hover {{ background: #F23347; }}
+.dn-cta.discret {{ background: transparent; border: 1.5px solid {ROUGE}; color: {ROUGE_CLAIR} !important; }}
+.dn-cta.discret:hover {{ background: {ROSE_PALE}; }}
+.dn-cta.grand {{ padding: 13px 26px; font-size: 16px; }}
 /* Page « Le marche » : blocs editoriaux */
 .dn-hero-grille {{ display: grid; grid-template-columns: minmax(0,1.25fr) minmax(0,1fr); gap: 28px; align-items: end; }}
 .dn-hero-stats {{ display: flex; gap: 30px; flex-wrap: wrap; margin-top: 22px; }}
@@ -130,7 +137,7 @@ header[data-testid="stHeader"] {{ background: transparent; }}
 .dn-contrats {{ display: flex; height: 44px; border-radius: 10px; overflow: hidden; gap: 2px; margin: 8px 0 12px; }}
 .dn-contrats div {{ display: flex; align-items: center; justify-content: center; color: #fff;
   font: 700 12.5px 'JetBrains Mono', monospace; white-space: nowrap; overflow: hidden; }}
-.dn-appel {{ background: {GRAPHITE}; color: #fff; border: 1px solid {BORD}; border-radius: 18px; padding: 30px 34px; margin-top: 8px;
+.dn-appel {{ background: {GRAPHITE}; color: #fff; border: 1px solid {BORD}; border-radius: 18px; padding: 30px 34px; margin-top: 40px;
   background-image: linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px),
                     linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px);
   background-size: 32px 32px; }}
@@ -205,12 +212,28 @@ div[data-testid="stMetricValue"] {{ font-family: 'JetBrains Mono', monospace; co
 """
 
 
+# Lien vers l'etape « Mon CV » depuis l'accueil. Un vrai lien (et non un
+# bouton Streamlit) pour pouvoir le placer dans le bandeau et dans les blocs
+# HTML ; app.py lit ?etape=1 au chargement. Sur l'accueil, aucune saisie
+# n'est encore faite : recharger la page ne fait rien perdre.
+LIEN_CV = "?etape=1"
+
+
+def bouton_cv(texte="Déposer mon CV", discret=False):
+    return (f'<a class="dn-cta{" discret" if discret else ""}" href="{LIEN_CV}" target="_self">'
+            f"{texte} <span aria-hidden=\"true\">→</span></a>")
+
+
 def bandeau(etape):
-    noms = ["Mon CV", "Territoires", "Offres"]
-    etapes = f'<span class="dn-etape{" on" if etape == 0 else ""}"><b>◎</b>Le marché</span>' + "".join(
-        f'<span class="dn-etape{" on" if i + 1 == etape else ""}"><b>{i + 1}</b>{n}</span>'
-        for i, n in enumerate(noms)
-    )
+    """Accueil : « Le marché » + bouton « Déposer mon CV ». Ensuite : les 3 étapes."""
+    if etape == 0:
+        etapes = '<span class="dn-etape on"><b>◎</b>Le marché</span>' + bouton_cv()
+    else:
+        noms = ["Mon CV", "Territoires", "Offres"]
+        etapes = '<span class="dn-etape"><b>◎</b>Le marché</span>' + "".join(
+            f'<span class="dn-etape{" on" if i + 1 == etape else ""}"><b>{i + 1}</b>{n}</span>'
+            for i, n in enumerate(noms)
+        )
     logo = (
         '<svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true">'
         '<circle cx="13" cy="13" r="11" fill="none" stroke="#fff" stroke-width="2"/>'

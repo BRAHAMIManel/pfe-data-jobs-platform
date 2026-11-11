@@ -197,7 +197,8 @@ def page(offres, bmo, refs, postes, categorie_du_poste, categories, aller, regio
         f"<div><b>{nombre(len(offres))}</b><span>analysées depuis le {debut:%d/%m}</span></div>"
         f"<div><b>{nombre(offres['entreprise'].nunique())}</b><span>employeurs</span></div>"
         f"<div><b>{len(tension)}</b><span>régions couvertes</span></div>"
-        f"</div></div><div>{courbe_svg(semaines['offres'].tolist())}</div></div></div>",
+        f'</div><div style="margin-top:24px">{s.bouton_cv("Déposer mon CV")}</div>'
+        f"</div><div>{courbe_svg(semaines['offres'].tolist())}</div></div></div>",
         unsafe_allow_html=True,
     )
 
@@ -217,6 +218,9 @@ def page(offres, bmo, refs, postes, categorie_du_poste, categories, aller, regio
                       "seulement des offres acceptent un <b>débutant</b>. Pour un premier poste, "
                       "bien choisir sa ville compte double.", signal=True))
     st.markdown(f'<div class="dn-retenir">{"".join(faits)}</div>', unsafe_allow_html=True)
+    st.markdown('<div style="display:flex;justify-content:flex-end;margin-top:12px">'
+                + s.bouton_cv("Voir où mon profil a le plus de chances", discret=True) + "</div>",
+                unsafe_allow_html=True)
 
     # ---------------------------------------------------- 3. ou chercher
     section("Où la concurrence est-elle la plus faible ?")
@@ -319,11 +323,12 @@ def page(offres, bmo, refs, postes, categorie_du_poste, categories, aller, regio
         "<h2>Où ton profil a-t-il le plus de chances ?</h2>"
         "<p>Dépose ton CV : l'application croise tes compétences et ton expérience avec ces offres, "
         "classe les régions et les villes, et te montre les offres à viser et les compétences à "
-        "apprendre. Le CV est lu sur place, jamais enregistré ni envoyé à un service extérieur.</p></div>",
+        "apprendre. Le CV est lu sur place, jamais enregistré ni envoyé à un service extérieur.</p>"
+        f'<div style="margin-top:22px">{s.bouton_cv("Déposer mon CV").replace("dn-cta", "dn-cta grand", 1)}</div>'
+        "</div>",
         unsafe_allow_html=True,
     )
-    _, milieu, _ = st.columns([1, 1, 1])
-    milieu.button("Analyser mon CV →", type="primary", on_click=aller, args=(1,), use_container_width=True)
+    st.markdown("<div style='height:18px'></div>", unsafe_allow_html=True)
 
     st.caption(
         "Sources : offres de l'API France Travail collectées par le pipeline (domaine ROME M18) ; "

@@ -203,6 +203,11 @@ def init_etat():
 init_etat()
 E = st.session_state
 
+# Lien « Déposer mon CV » de l'accueil (bandeau et blocs) : ?etape=1
+if st.query_params.get("etape") == "1":
+    E["etape"] = 1
+    st.query_params.clear()
+
 # Streamlit efface l'etat d'un widget absent de l'ecran. Le profil saisi a
 # l'etape 1 doit survivre aux etapes 2 et 3 : on le reaffecte a chaque tour.
 for _cle in ("competences", "annees", "postes", "zone_mode", "zone_regions",
