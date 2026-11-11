@@ -1,11 +1,11 @@
-requests==2.32.3
-beautifulsoup4==4.12.3
-lxml==5.2.2
-python-dotenv==1.0.1
+# Bibliotheques du pipeline (image Airflow). Versions figees : meme
+# resultat partout. Verifiees par pip-audit a chaque push (CI).
+# Retirees le 11/11 car inutilisees par le pipeline : beautifulsoup4,
+# lxml, python-dotenv, boto3 (moins de code = moins de failles possibles).
+requests==2.33.1
 minio==7.2.7
-boto3==1.34.144
 pandas==2.2.2
 psycopg2-binary==2.9.9
-pytest==8.3.3
-pyspark==3.5.3
+pytest==9.0.3
+pyspark==3.5.9
 pyarrow>=14.0

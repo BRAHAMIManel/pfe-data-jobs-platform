@@ -45,6 +45,11 @@ CSS = f"""
 html, body, [class*="st-"], .stMarkdown, button, input, textarea {{
   font-family: 'Manrope', 'Segoe UI', system-ui, sans-serif;
 }}
+/* Les icones de Streamlit sont une police (Material Symbols) : ne pas la
+   remplacer par Manrope, sinon on lit « upload » ou « expand_more ». */
+[data-testid="stIconMaterial"], .material-symbols-rounded, .material-icons {{
+  font-family: 'Material Symbols Rounded', 'Material Icons' !important;
+}}
 h1, h2, h3, .dn-titre {{
   font-family: 'Sora', 'Segoe UI', system-ui, sans-serif !important;
   color: {ENCRE};

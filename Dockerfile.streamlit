@@ -1,12 +1,10 @@
 # Image de base figee par empreinte (voir docker-compose.yml).
 FROM python:3.11-slim@sha256:d0d43a8b0c352c215cd1381f3f4d7ac34cf3440cd0415873451d7affca53a769
 
-RUN pip install --no-cache-dir \
-    streamlit==1.45.1 \
-    psycopg2-binary==2.9.9 \
-    pandas==2.2.2 \
-    pdfplumber==0.11.4 \
-    python-docx==1.1.2
+# Les versions sont dans app/requirements.txt : un seul endroit a
+# mettre a jour, et c'est ce fichier que la CI audite (pip-audit).
+COPY app/requirements.txt /tmp/requirements-app.txt
+RUN pip install --no-cache-dir -r /tmp/requirements-app.txt
 
 # Securite : l'application ne tourne pas en root. Si elle etait
 # compromise, l'attaquant n'aurait que les droits de ce compte, sans
