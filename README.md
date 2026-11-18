@@ -1,175 +1,165 @@
-# PFE — Plateforme Big Data de collecte et d'analyse des offres d'emploi
+# Détecteur de niches IT
 
-Projet de fin d'études — Master 2 Data Engineering
-Auteure : Manel Brahami
-Soutenance prévue : début décembre 2026
+**Plateforme Big Data de collecte et d'analyse des offres d'emploi en informatique**
 
----
+[![CI](https://github.com/BRAHAMIManel/pfe-data-jobs-platform/actions/workflows/ci.yml/badge.svg?branch=app-finale)](https://github.com/BRAHAMIManel/pfe-data-jobs-platform/actions/workflows/ci.yml)
 
-## 📌 En une phrase
-
-Un outil qui collecte automatiquement les offres d'emploi Data/IA en France, les analyse, et indique à un candidat **où concentrer ses candidatures pour maximiser ses chances** — pas juste où il y a le plus d'offres, mais où il y a le meilleur rapport demande/concurrence.
+Projet de fin d'études — Master 2 Data Engineering, Institut F2i — Manel Brahami, 2026.
 
 ---
 
-## 👤 Côté utilisateur — à quoi ça sert
+## En une phrase
 
-### Le problème
+La plateforme collecte chaque jour les offres d'emploi en informatique publiées sur France Travail, repère les territoires où les employeurs ont du mal à recruter, et indique à un candidat, à partir de son CV, les régions et les villes où il a le plus de chances.
 
-Un candidat qui cherche un poste Data/IA voit aujourd'hui une liste brute d'offres (LinkedIn, France Travail...), sans savoir où la concurrence est forte ou faible. Beaucoup de candidatures partent donc "au hasard", sans stratégie.
-
-### Le parcours utilisateur
-
-1. **L'utilisateur entre son profil** : compétences (ex. "Python, SQL, Airflow"), zone géographique souhaitée.
-2. **Il obtient un classement de villes/opportunités**, calculé selon le volume d'offres disponibles et une estimation de la concurrence pour ce profil précis.
-3. **Il sélectionne une ville** qui l'intéresse et consulte la liste des offres réelles correspondantes, avec lien direct vers l'offre d'origine.
-4. **(Bonus, à valider avec le tuteur)** Il peut générer un brouillon de message de candidature personnalisé pour une offre choisie, qu'il relit et envoie lui-même.
-
-### Ce que l'utilisateur reçoit
-
-Pas une simple liste d'offres, mais une **aide à la décision** : où chercher en priorité, avec les offres concrètes à l'appui.
+> Le score n'est pas une probabilité d'embauche : il classe des territoires selon des signaux mesurés dans les offres.
 
 ---
 
-## ⚙️ Côté technique — comment ça fonctionne
+## Le problème
 
-### Vue d'ensemble du pipeline
+Les candidats cherchent là où il y a le plus d'offres, donc là où il y a le plus de concurrence. Les sites d'emploi montrent des offres une par une, mais ne disent jamais **où** les employeurs peinent à recruter un profil donné. Cette information n'existe dans aucune annonce : on ne la voit qu'en suivant des milliers d'offres dans le temps.
+
+## Le parcours du candidat
+
+| Étape | Page | Ce qu'il voit |
+|---|---|---|
+| 0 | Le marché | nombre d'offres, évolution, compétences demandées, régions les moins saturées |
+| 1 | Le CV | dépôt PDF ou Word, compétences et expérience lues automatiquement, corrigeables |
+| 2 | Les territoires | classement des régions puis des villes, score sur 100, fiabilité, repère officiel BMO |
+| 3 | Les offres | offres compatibles, lien vers France Travail, compétences à apprendre |
+
+Le CV est lu **en local** et **n'est jamais enregistré**.
+
+---
+
+## Architecture
 
 ```
-[Ingestion] → [Normalisation] → [Orchestration] → [Data Lake] → [Traitement] → [Data Warehouse] → [Détecteur de niches] → [Restitution]
+API France Travail ──> Collecte ──> raw (MinIO, JSON brut)
+                                       │  PySpark : doublons, compétences
+                                       v
+                                    silver (MinIO, Parquet)
+                                       │  chargement sans doublon
+                                       v
+                                    gold (PostgreSQL, schéma en étoile)
+                                       │  dbt : modèles + 72 tests
+                                       v
+                                    Application Streamlit (lecture seule)
 ```
 
-### 1. Ingestion (collecte des données brutes)
+Tout est piloté par **Apache Airflow** (3 DAG enchaînés, chaque jour à 11 h UTC) et tourne dans **Docker Compose**.
 
-- **France Travail** : API REST officielle, authentification OAuth2 (client_credentials), pagination par blocs de 150 offres.
-- **LinkedIn** : scraping des pages publiques de recherche (`requests` + `BeautifulSoup`), sans authentification, avec délais entre requêtes. *Usage exploratoire uniquement — fragile et à faible volume, en dehors du périmètre garanti du pipeline principal.*
-- **Adzuna / APEC** : sources complémentaires envisagées (API pour Adzuna, à évaluer pour APEC).
-
-### 2. Normalisation
-
-Chaque source a son propre format JSON. Un adaptateur par source convertit vers un schéma commun :
-
-```python
-{
-  "id_offre": str,            # hash titre + entreprise + ville
-  "source": str,               # "france_travail" | "linkedin" | ...
-  "titre": str,
-  "entreprise": str,
-  "ville": str,
-  "date_publication": str,
-  "lien_offre": str,
-  "peu_concurrentielle": bool | None
-}
-```
-
-### 3. Orchestration — Apache Airflow
-
-Un DAG planifie et enchaîne les tâches de collecte, normalisation et écriture, avec gestion automatique des tentatives en cas d'échec (ex. erreur 500 côté API).
-
-### 4. Data Lake — MinIO
-
-Stockage des données brutes normalisées, organisées par date, pour garder un historique exploitable dans l'analyse de tendances.
-
-### 5. Traitement — PySpark
-
-Nettoyage, dédoublonnage inter-sources (basé sur `id_offre`), normalisation des champs (notamment les villes, dont le format diffère selon les sources).
-
-### 6. Modélisation — dbt + PostgreSQL
-
-Schéma en étoile :
-- Table de faits `offres`
-- Dimensions `villes`, `competences`, `temps`
-
-Tests de qualité de données automatisés via dbt (ex. absence de doublons, absence de valeurs nulles critiques).
-
-### 7. Détecteur de niches d'opportunités (fonctionnalité différenciante)
-
-Calcul, pour chaque combinaison ville × compétence, d'un score croisant volume de demande et rareté estimée du profil recherché :
-
-```sql
-SELECT ville, competence,
-       COUNT(*) AS volume_demande,
-       COUNT(*) FILTER (WHERE peu_concurrentielle) AS volume_peu_concurrentiel
-FROM offres
-GROUP BY ville, competence
-```
-
-### 8. Industrialisation — Docker / Docker Compose
-
-L'ensemble de la stack (Airflow, PostgreSQL, MinIO) est conteneurisé et lancé via `docker-compose up`, pour une exécution reproductible sur n'importe quelle machine.
-
-### 9. Restitution (légère)
-
-Un tableau de bord minimal (Metabase) permet une vérification visuelle rapide des indicateurs clés. Cette couche reste volontairement secondaire : l'effort du projet porte sur la robustesse du pipeline (ingestion → orchestration → transformation → stockage), cœur de métier Data Engineer.
+| Couche | Outil | Rôle |
+|---|---|---|
+| Collecte | Python, API France Travail (OAuth2) | offres du domaine ROME M18, découpage par région si la limite de 3 150 offres est atteinte |
+| raw | MinIO | réponses de l'API telles quelles, jamais modifiées : permet de tout recalculer |
+| silver | PySpark, Parquet | suppression des doublons, extraction des compétences (repli JSON si Spark échoue) |
+| gold | PostgreSQL | schéma en étoile : `fait_offre`, 7 dimensions, table pont des compétences |
+| Analyse | dbt | `stg_offres` → `int_republications` → `mart_offres_candidat`, et 72 tests de données |
+| Orchestration | Apache Airflow | `ingestion_france_travail` → `chargement_gold` → `detecteur_niches` |
+| Application | Streamlit | calcul du score à la demande, à partir du CV |
 
 ---
 
-## 🧱 Stack technique
+## Le calcul du score
 
-| Couche | Technologie |
-|---|---|
-| Ingestion | Python (`requests`, `BeautifulSoup`) |
-| Orchestration | Apache Airflow |
-| Data Lake | MinIO |
-| Traitement | PySpark |
-| Modélisation | dbt |
-| Data Warehouse | PostgreSQL |
-| Industrialisation | Docker / Docker Compose |
-| CI/CD (bonus) | GitHub Actions |
-| Restitution | Metabase |
+```
+Score = 100 × (0,45 × Tension + 0,35 × Adéquation + 0,20 × Volume)
+```
 
----
+- **Tension** : 3 signaux comparés à la moyenne nationale, avec le même poids :
+  - l'offre reste en ligne plus de 30 jours ;
+  - France Travail signale un manque de candidats ;
+  - l'employeur a retiré puis republié l'offre (cabinets exclus, 3 au plus par employeur et par ville).
 
-## 📊 État d'avancement
+  Les petits territoires sont **lissés** vers la moyenne. Un territoire dans la moyenne vaut 50.
+- **Adéquation** : part des compétences demandées que le CV couvre.
+- **Volume** : nombre d'offres compatibles, sur une échelle logarithmique.
 
-| Étape | Statut |
-|---|---|
-| Ingestion France Travail | ✅ Fonctionnel (authentification, pagination, filtre de fraîcheur) |
-| Ingestion LinkedIn (scraping) | 🟡 Testé, exploratoire, non garanti dans le pipeline final |
-| Normalisation multi-sources | 🟡 Conception faite, pas encore branchée sur les vraies données |
-| Orchestration (Airflow) | ❌ À faire |
-| Data Lake (MinIO) | ❌ À faire |
-| Traitement (PySpark) | ❌ À faire |
-| Modélisation (dbt / PostgreSQL) | ❌ À faire |
-| Détecteur de niches | ❌ À faire (conçu) |
-| Industrialisation (Docker) | ❌ À faire |
-| Restitution (Metabase) | ❌ À faire |
+Chaque territoire a une étiquette **Fiable / Indicatif / Fragile**. Les territoires fragiles (moins de 10 offres) passent en dernier.
+
+Le calcul a été **confronté à l'enquête BMO 2026** (`scripts/calibrage_bmo.py`) et soumis à une **analyse de sensibilité** des poids (`scripts/sensibilite_poids.py`).
 
 ---
 
-## 🚀 Démarrage rapide (état actuel)
+## Qualité et sécurité
+
+**Tests**
+- `pytest` : collecte, nettoyage, PySpark, calcul du score (`tests/`).
+- `dbt test` : 72 tests sur les vraies données, à chaque chargement.
+- Intégration continue (GitHub Actions) à chaque push : tests, validation dbt, recherche de secrets (gitleaks), failles connues des bibliothèques (pip-audit).
+
+**Sécurité** (détail dans `securite/analyse_menaces.md`, 12 menaces)
+- Ports ouverts uniquement sur `127.0.0.1`.
+- Moindre privilège : l'application lit l'entrepôt avec un compte en lecture seule ; le compte MinIO de la collecte ne peut ni supprimer, ni écrire ailleurs que dans raw et silver.
+- Secrets dans `.env` (jamais envoyé sur GitHub), modèle dans `.env.example`.
+- Images Docker figées par empreinte sha256, application exécutée sans droits root.
+- `scripts/verifier_securite.py` vérifie 16 contrôles en essayant réellement les actions interdites.
+
+---
+
+## Installation
+
+Il faut Docker Desktop et un compte développeur France Travail (https://francetravail.io).
 
 ```bash
-# 1. Cloner le repo
 git clone https://github.com/BRAHAMIManel/pfe-data-jobs-platform.git
 cd pfe-data-jobs-platform
+git checkout app-finale
 
-# 2. Créer l'environnement virtuel
-python -m venv venv
-venv\Scripts\activate      # Windows
-# source venv/bin/activate # Mac/Linux
+# Copier le modèle puis remplir les valeurs (identifiants, mots de passe, clés)
+cp .env.example .env
 
-# 3. Installer les dépendances
-pip install requests python-dotenv beautifulsoup4
+docker compose build
+docker compose up -d
+```
 
-# 4. Configurer les identifiants
-# Copier .env.example en .env et y renseigner vos identifiants France Travail
-# (compte développeur sur https://francetravail.io)
+| Service | Adresse (depuis la machine uniquement) |
+|---|---|
+| Application | http://localhost:8501 |
+| Airflow | http://localhost:8080 |
+| Console MinIO | http://localhost:9001 |
 
-# 5. Lancer la collecte
-python collecte_offres_v3_filtree.py
+Dans Airflow, activer le DAG `ingestion_france_travail` : il déclenche ensuite les deux autres.
+
+### Commandes utiles
+
+```bash
+# Rapport de collecte (écrit dans logs/rapports/)
+docker compose exec airflow-scheduler python /opt/airflow/scripts/rapport_ingestion.py
+
+# Tests de données dbt
+docker compose exec airflow-scheduler bash -c "cd /opt/airflow/dbt && /home/airflow/dbt-venv/bin/dbt test --profiles-dir ."
+
+# Contrôles de sécurité
+docker compose exec airflow-scheduler python /opt/airflow/scripts/verifier_securite.py
+
+# Mesures pour le mémoire
+docker compose exec airflow-scheduler python /opt/airflow/scripts/mesure_signaux.py
+docker compose exec airflow-scheduler python /opt/airflow/scripts/calibrage_bmo.py
+docker compose exec app python /scripts/sensibilite_poids.py
 ```
 
 ---
 
-## ⚠️ Points de vigilance
+## Organisation du dépôt
 
-- Le scraping LinkedIn est réalisé à titre exploratoire uniquement, dans le respect d'un volume raisonnable. Il ne constitue pas une source garantie du pipeline final en raison des conditions d'utilisation de la plateforme et du risque de blocage technique.
-- Aucune donnée personnelle identifiable n'est collectée : le projet porte sur les offres d'emploi, pas sur des personnes.
-- Les identifiants d'API sont gérés via un fichier `.env`, exclu du dépôt Git (`.gitignore`).
+```
+app/          application Streamlit (pages, calcul du score, style)
+dags/         les 3 DAG Airflow
+scripts/      collecte, nettoyage, PySpark, entrepôt, mesures, sécurité
+dbt/          modèles, seeds (cabinets intermédiaires, BMO 2026) et tests
+tests/        tests pytest
+securite/     analyse de menaces, politique MinIO du compte de collecte
+.github/      intégration continue
+```
 
 ---
 
-## 🎓 Contexte académique
+## Limites connues
 
-Ce projet est réalisé de façon autonome, sans lien avec l'activité professionnelle de l'auteure. Il s'inscrit dans le cadre du Master 2 Data Engineering, thématique "Conception d'une plateforme Big Data de collecte et d'analyse des offres d'emploi".
+- Une seule source (France Travail) : une partie du marché, surtout les postes de cadres, n'y figure pas.
+- Historique court, avec des jours sans collecte quand la machine est éteinte.
+- Signaux indirects : on ne connaît pas les embauches réelles.
+- Pas de lien établi avec l'enquête BMO : les poids des signaux restent égaux.
