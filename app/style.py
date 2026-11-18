@@ -198,9 +198,10 @@ div[data-testid="stMetricValue"] {{ font-family: 'JetBrains Mono', monospace; co
 
 /* Mini-carte */
 .dn-carte-fr {{ display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 6px;
-  max-width: 420px; margin: 8px auto 0; }}
+  max-width: 560px; margin: 8px auto 0; }}
 .dn-tuile {{ aspect-ratio: 1; border-radius: 10px; padding: 7px; display: flex;
-  flex-direction: column; justify-content: space-between; font-weight: 700; font-size: 12px; }}
+  flex-direction: column; justify-content: space-between; font-weight: 700; font-size: 11px;
+  line-height: 1.15; overflow-wrap: anywhere; }}
 .dn-tuile .s {{ font: 800 14px 'Sora', sans-serif; }}
 .dn-tuile.hors {{ opacity: .3; }}
 .dn-legende {{ display: flex; gap: 8px; align-items: center; justify-content: center;
@@ -300,7 +301,7 @@ def mini_carte(regions, dans_zone, legende="opportunité"):
         hors = "" if r["code"] in dans_zone else " hors"
         cases[(int(r["grille_ligne"]), int(r["grille_col"]))] = (
             f'<div class="dn-tuile{hors}" style="background:{fond};color:{texte}" '
-            f'title="{escape(r["nom"])} : {score}"><span>{r["abrev"]}</span>'
+            f'title="{escape(r["nom"])} : {score}"><span>{escape(r["nom"])}</span>'
             f'<span class="s">{score}</span></div>'
         )
     grille = "".join(cases.get((i // 5, i % 5), "<div></div>") for i in range(25))
@@ -334,5 +335,14 @@ def barre(libelle, valeur, couleur, texte):
     )
 
 
+# Explication affichee au survol de l'etiquette de fiabilite.
+SENS_FIABILITE = {
+    "Fiable": "30 offres compatibles ou plus : le score est solide.",
+    "Indicatif": "De 10 à 29 offres compatibles : le score donne une tendance, à confirmer.",
+    "Fragile": "Moins de 10 offres compatibles : trop peu pour conclure, une seule offre peut tout changer.",
+}
+
+
 def badge(fiabilite):
-    return f'<span class="dn-badge {fiabilite}">{fiabilite}</span>'
+    sens = escape(SENS_FIABILITE.get(fiabilite, ""))
+    return f'<span class="dn-badge {fiabilite}" title="{sens}">{fiabilite}</span>'

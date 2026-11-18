@@ -88,6 +88,12 @@ TITRES_EXPERIENCE = re.compile(
     r"^\s*(experiences?( professionnelles?)?|parcours professionnel|"
     r"emplois?|work experience|experience)\s*:?\s*$"
 )
+# Dans un CV sur deux colonnes, le titre peut partager sa ligne avec le
+# texte de l'autre colonne (« Permis B   Experiences professionnelles »).
+# On accepte alors les titres sans ambiguite, n'importe ou dans la ligne.
+TITRES_EXPERIENCE_DANS_LIGNE = re.compile(
+    r"\b(experiences? professionnelles?|parcours professionnel|work experience)\b"
+)
 # Fin de la rubrique experience : uniquement les rubriques de formation.
 # Dans un CV sur deux colonnes, le texte des colonnes est entremele : les
 # titres "Competences", "Langues" ou "Certifications" de la colonne de
@@ -104,6 +110,11 @@ def _section_experience(texte_normalise):
     debut = next(
         (i for i, l in enumerate(lignes) if TITRES_EXPERIENCE.match(l)), None
     )
+    if debut is None:
+        debut = next(
+            (i for i, l in enumerate(lignes) if TITRES_EXPERIENCE_DANS_LIGNE.search(l)),
+            None,
+        )
     if debut is None:
         return texte_normalise, False
 

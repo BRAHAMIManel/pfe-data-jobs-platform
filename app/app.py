@@ -98,7 +98,9 @@ def lire(requete):
         return pd.DataFrame(cur.fetchall(), columns=colonnes)
 
 
-@st.cache_data(ttl=600, show_spinner="Chargement des offres…")
+# Les offres ne changent qu'une fois par jour (collecte de 11 h UTC) : on les
+# garde 3 h en memoire au lieu de 10 min, pour eviter de tout relire souvent.
+@st.cache_data(ttl=3 * 3600, show_spinner="Chargement des offres…")
 def charger():
     try:
         brut = lire(REQUETE_MART)
@@ -253,16 +255,44 @@ def mot(n, singulier, pluriel=None):
 
 # ============================================================== calculs
 
+# Version des donnees : change quand une nouvelle collecte est chargee.
+# Elle fait partie de la cle des caches ci-dessous, pour ne jamais servir
+# un score calcule sur d'anciennes offres.
+VERSION_DONNEES = (str(OFFRES["derniere_collecte"].max()), len(OFFRES))
+
+
+# Performance : sans cache, chaque clic (onglet, filtre, bouton) relancait
+# le croisement du CV avec TOUTES les offres et le calcul des scores de
+# toutes les regions et villes. Ces resultats ne dependent que du profil
+# (competences, experience, postes, contrat) : on les garde en memoire et
+# on ne recalcule que si le profil ou les donnees changent.
+@st.cache_data(max_entries=32, show_spinner=False)
+def evaluer_cache(version, competences, annees):
+    return c.evaluer_offres(OFFRES, list(competences), annees)
+
+
+@st.cache_data(max_entries=32, show_spinner="Calcul des scores…")
+def scores_cache(version, competences, annees, postes, contrat):
+    evaluees = evaluer_cache(version, competences, annees)
+    perim = c.perimetre(evaluees, list(postes), contrat, {"mode": "france"})
+    return (
+        perim,
+        c.noter_territoires(perim, "region", REFS),
+        c.noter_territoires(perim, "ville", REFS),
+    )
+
+
 def calculer():
-    """Tout ce qui depend du candidat, recalcule a chaque interaction."""
-    evaluees = c.evaluer_offres(OFFRES, E.competences, E.annees)
-    perim = c.perimetre(evaluees, E.postes, E.contrat, {"mode": "france"})
+    """Tout ce qui depend du candidat (les calculs lourds sont en cache)."""
+    perim, regions_notees, villes_notees = scores_cache(
+        VERSION_DONNEES, tuple(E.competences), E.annees, tuple(E.postes), E.contrat,
+    )
     dans_zone = c.masque_zone(perim, zone())
     return {
         "perimetre": perim,
         "zone": perim[dans_zone],
-        "regions": c.noter_territoires(perim, "region", REFS),
-        "villes": c.noter_territoires(perim, "ville", REFS),
+        "regions": regions_notees,
+        "villes": villes_notees,
         "villes_zone": set(perim.loc[dans_zone, "cle_ville"]),
         "regions_zone": set(perim.loc[dans_zone, "code_region"]),
     }
@@ -319,7 +349,7 @@ def ajouter_poste(id_poste):
 
 def bloc_postes_recommandes():
     """Familles de postes classees selon les chances du candidat."""
-    evaluees = c.evaluer_offres(OFFRES, E.competences, E.annees)
+    evaluees = evaluer_cache(VERSION_DONNEES, tuple(E.competences), E.annees)
     perim = evaluees[c.masque_contrat(evaluees, E.contrat) & c.masque_zone(evaluees, zone())]
     reco = c.recommander_postes(perim, REFS, POSTES)
     if reco.empty:
@@ -610,7 +640,10 @@ def etape_territoires():
             st.caption("Coche une ou plusieurs villes, ou prends toute la liste.")
 
         st.caption(
-            "Fiabilité : Fiable à partir de 30 offres, Indicatif de 10 à 29, Fragile en dessous."
+            "Fiabilité = nombre d'offres sur lequel repose le score. "
+            "Fiable : 30 offres ou plus, le score est solide. "
+            "Indicatif : 10 à 29 offres, c'est une tendance à confirmer. "
+            "Fragile : moins de 10 offres, trop peu pour conclure (ces villes sont classées en dernier)."
         )
 
         if zone()["mode"] != "france" and not villes.empty:

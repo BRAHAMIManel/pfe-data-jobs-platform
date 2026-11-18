@@ -10,6 +10,11 @@ font = "sans serif"
 [server]
 headless = true
 maxUploadSize = 5   # Mo : largement assez pour un CV
+# Ne pas surveiller les fichiers du code : sous Windows, le dossier app/ est
+# partage avec Docker et la surveillance consomme du processeur en continu.
+# Apres une modification du code : docker compose restart app
+fileWatcherType = "none"
+runOnSave = false
 
 [client]
 toolbarMode = "minimal"
