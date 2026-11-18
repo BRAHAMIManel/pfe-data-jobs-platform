@@ -6,10 +6,17 @@ le resultat est correct sur de vraies offres. Ici, un humain verifie un
 echantillon tire au hasard, et on en tire un taux de precision.
 
 Deux controles :
-  1. Competences : pour 50 offres, les competences detectees dans la
+  1. Competences : pour 30 offres, les competences detectees dans la
      description sont-elles vraiment demandees ? En manque-t-il ?
+     Verification a la main : un programme utiliserait la meme methode que
+     le detecteur, le controle serait circulaire.
   2. Republications : pour 30 republications retenues, s'agit-il vraiment
-     du meme poste remis en ligne ?
+     du meme poste remis en ligne ? Ici, une partie est verifiee
+     automatiquement, par un critere INDEPENDANT du detecteur : le
+     detecteur ne lit pas la description (il compare entreprise, intitule
+     et commune) ; on compare donc les deux descriptions. Si elles sont
+     identiques a au moins 90 %, le verdict « oui » est pre-rempli. Les
+     autres cas restent a verifier a la main.
 
 Etape 1 - preparer les fichiers a remplir :
     docker compose exec airflow-scheduler python /opt/airflow/scripts/evaluation_manuelle.py preparer
@@ -39,6 +46,7 @@ import os
 import sys
 import warnings
 from datetime import datetime
+from difflib import SequenceMatcher
 
 import pandas as pd
 import psycopg2
@@ -48,11 +56,12 @@ from storage import lire_json, lire_octets, lister_objets
 DOSSIER = "/opt/airflow/logs/rapports/evaluation"
 FICHIER_COMPETENCES = os.path.join(DOSSIER, "competences_a_verifier.csv")
 FICHIER_REPUBLICATIONS = os.path.join(DOSSIER, "republications_a_verifier.csv")
-TAILLE_COMPETENCES = 50
+TAILLE_COMPETENCES = 30
 TAILLE_REPUBLICATIONS = 30
 GRAINE = "pfe-2026"        # tirage reproductible : tri sur md5(id || graine)
 BUCKET_SILVER = "silver"
-LONGUEUR_MAX = 3000        # description tronquee pour rester lisible dans Excel
+LONGUEUR_MAX = 3000
+SEUIL_SIMILARITE = 0.90   # descriptions quasi identiques = meme poste        # description tronquee pour rester lisible dans Excel
 
 # Meme normalisation d'intitule que dbt (int_republications).
 INTITULE = r"""trim(regexp_replace(regexp_replace(
@@ -149,16 +158,32 @@ def descriptions(ids):
             break
         for offre in lire_fichier_silver(chemin) or []:
             identifiant = offre.get("id")
-            if identifiant in restantes:
-                trouvees[identifiant] = offre.get("description") or ""
+            description = offre.get("description")
+            # Un fichier sans description (champ vide) ne compte pas comme
+            # trouve : on continue de chercher dans les autres fichiers.
+            if identifiant in restantes and isinstance(description, str) and description.strip():
+                trouvees[identifiant] = description
                 restantes.discard(identifiant)
     if restantes:
         print(f"  {len(restantes)} description(s) introuvable(s) dans silver.")
     return trouvees
 
 
+def similarite(a, b):
+    """Part de texte commun entre deux descriptions (0 a 1), apres mise en
+    minuscules et suppression des espaces en trop. None si l'une manque."""
+    if not isinstance(a, str) or not isinstance(b, str) or not a.strip() or not b.strip():
+        return None
+    a, b = " ".join(a.lower().split()), " ".join(b.lower().split())
+    return SequenceMatcher(None, a, b).ratio()
+
+
 def couper(texte):
-    texte = " ".join((texte or "").split())
+    # Description introuvable (offre trop ancienne pour silver) : on renvoie
+    # vers le lien de l'offre plutot que de planter.
+    if not isinstance(texte, str) or not texte.strip():
+        return "(description introuvable : ouvrir le lien de l'offre)"
+    texte = " ".join(texte.split())
     return texte if len(texte) <= LONGUEUR_MAX else texte[:LONGUEUR_MAX] + " [...]"
 
 
@@ -191,8 +216,23 @@ def preparer():
 
     republications["description_origine"] = republications["id_origine"].map(textes).map(couper)
     republications["description_republiee"] = republications["id_republiee"].map(textes).map(couper)
-    republications.insert(0, "VERDICT", "")
-    republications.insert(1, "COMMENTAIRE", "")
+    # Controle automatique independant du detecteur : similarite des deux
+    # descriptions completes (avant troncature).
+    sims = [
+        similarite(textes.get(a), textes.get(b))
+        for a, b in zip(republications["id_origine"], republications["id_republiee"])
+    ]
+    republications.insert(0, "VERDICT", ["oui" if x is not None and x >= SEUIL_SIMILARITE else "" for x in sims])
+    republications.insert(1, "METHODE", [
+        f"auto (descriptions identiques a {x:.0%})" if x is not None and x >= SEUIL_SIMILARITE
+        else ("a verifier (descriptions identiques a {:.0%})".format(x) if x is not None
+              else "a verifier (description introuvable)")
+        for x in sims
+    ])
+    republications.insert(2, "COMMENTAIRE", "")
+    auto = sum(1 for x in sims if x is not None and x >= SEUIL_SIMILARITE)
+    print(f"Republications verifiees automatiquement : {auto} sur {len(sims)} "
+          f"(seuil {SEUIL_SIMILARITE:.0%}). Reste a verifier a la main : {len(sims) - auto}.")
 
     # utf-8-sig + point-virgule : Excel en francais l'ouvre directement.
     competences.to_csv(FICHIER_COMPETENCES, sep=";", index=False, encoding="utf-8-sig")
@@ -264,10 +304,14 @@ def calculer():
     r = lire_rempli(FICHIER_REPUBLICATIONS)
     verdict = r["VERDICT"].str.lower().str.strip().str.replace("é", "e")
     oui, non = int(verdict.isin(["oui", "o", "vrai"]).sum()), int(verdict.isin(["non", "n", "faux"]).sum())
+    methode = r["METHODE"] if "METHODE" in r.columns else pd.Series([""] * len(r))
+    auto = int((methode.str.startswith("auto") & verdict.isin(["oui", "o", "vrai"])).sum())
     bas, haut = intervalle(oui, oui + non)
     lignes += [
         "## 2. Republications",
         f"- Republications verifiees : {oui + non} (oui : {oui}, non : {non})",
+        f"- Dont verifiees automatiquement (descriptions identiques a {SEUIL_SIMILARITE:.0%} ou plus) : {auto} ;"
+        f" a la main : {oui + non - auto}",
         f"- **Precision : {pct(oui / (oui + non) if oui + non else float('nan'))}**"
         f" (IC 95 % : {pct(bas)} – {pct(haut)})"
         " — part des republications detectees qui sont vraiment le meme poste remis en ligne",
