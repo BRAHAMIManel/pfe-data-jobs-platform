@@ -31,7 +31,6 @@ st.set_page_config(
     layout="wide",
 )
 st.markdown(s.CSS, unsafe_allow_html=True)
-s.bloquer_traduction()
 
 POSTES = {f["id"]: f["libelle"] for f in charger_postes()}
 CATEGORIE_DU_POSTE = {f["id"]: f["categorie"] for f in charger_postes()}
@@ -56,7 +55,7 @@ REQUETE_MART = "SELECT * FROM analytique.mart_offres_candidat"
 # n'a pas encore tourne (premiere installation).
 REQUETE_OFFRES = """
 SELECT f.id_offre, f.intitule, f.url_offre, f.id_poste, f.date_creation,
-       f.jours_en_ligne, f.derniere_collecte,
+       f.jours_en_ligne, f.premiere_collecte, f.derniere_collecte,
        COALESCE(f.manque_candidats, FALSE) AS manque,
        f.experience_annees::float AS experience_annees,
        f.salaire_min::float AS salaire_min, f.salaire_max::float AS salaire_max,
@@ -187,7 +186,7 @@ def init_etat():
     defauts = {
         "etape": 0,   # 0 = page d'accueil « Le marché »
         "competences": [],
-        "annees": 2.0,
+        "annees": 2,
         "postes": ["de", "da", "cd"],
         "contrat": "Tous",
         "zone_mode": "Toute la France",
@@ -411,12 +410,16 @@ def etape_cv():
                 E.competences = infos["competences"]
                 definir_postes(infos["postes"])
                 if infos["experience_annees"] is not None:
-                    E.annees = float(min(infos["experience_annees"], 40))
+                    # Arrondi a l'annee la plus proche : 2,6 ans -> 3 ans.
+                    E.annees = int(round(min(infos["experience_annees"], 40)))
                 st.rerun()
 
         if E.cv_infos:
             i = E.cv_infos
-            exp = f"{i['experience_annees']:g} ans" if i["experience_annees"] is not None else "non trouvée"
+            exp = (
+                mot(int(round(i["experience_annees"])), "an") if i["experience_annees"] is not None
+                else "non trouvée"
+            )
             note = "" if i["experience_fiable"] else " (rubrique expérience non repérée, vérifie)"
             st.markdown(
                 f'<div class="dn-carte"><span class="dn-eyebrow">Analysé · {escape(E.cv_nom)}</span>'
@@ -428,11 +431,11 @@ def etape_cv():
         st.multiselect(
             "Tes compétences",
             options=sorted(set(TOUTES_COMPETENCES) | set(E.competences), key=str.lower),
-            key="competences",
+            key="competences", placeholder="Choisis ou tape une compétence",
             help="Ajoute ou retire des compétences. Tu peux aussi tout saisir à la main, sans CV.",
         )
         st.number_input(
-            "Tes années d'expérience", min_value=0.0, max_value=40.0, step=0.5, key="annees",
+            "Tes années d'expérience", min_value=0, max_value=40, step=1, format="%d", key="annees",
             help=f"Les offres qui demandent plus de {c.ECART_NIVEAU} ans au-delà sont écartées.",
         )
 
@@ -465,7 +468,7 @@ def etape_cv():
                 st.rerun()
             st.multiselect(
                 "Régions", options=list(NOMS_REGIONS), format_func=NOMS_REGIONS.get,
-                key="zone_regions",
+                key="zone_regions", placeholder="Choisis une ou plusieurs régions",
             )
         elif E.zone_mode == "Autour d'une ville":
             col1, col2 = st.columns([1.2, 1])
@@ -567,12 +570,14 @@ def etape_territoires():
     k1.metric("Offres compatibles", f"{n:,}".replace(",", " "), help="À ton niveau, 2 compétences communes ou plus")
     k2.metric("En ligne, < 14 jours", int(retenues["recente"].sum()))
     if n:
-        k3.metric(
-            "Signaux de tension (%)",
-            f"{retenues['persistante'].mean():.0%} · {retenues['manque'].mean():.0%} · "
-            f"{retenues['republication'].mean():.0%}".replace("%", ""),
-            help="En ligne depuis plus de 30 jours · signalées « manque de candidats » · "
-                 "republiées après retrait",
+        # Les trois indices de difficulte a recruter, en clair (avant :
+        # « 13 · 2 · 5 », illisible sans explication).
+        k3.markdown(
+            '<div class="dn-signaux"><div class="titre">Signes que les employeurs ont du mal à recruter</div>'
+            f'<div class="l"><b>{retenues["persistante"].mean():.0%}</b>encore en ligne après {c.SEUIL_JOURS} jours</div>'
+            f'<div class="l"><b>{retenues["manque"].mean():.0%}</b>« manque de candidats »</div>'
+            f'<div class="l"><b>{retenues["republication"].mean():.0%}</b>retirées puis remises en ligne</div></div>',
+            unsafe_allow_html=True,
         )
     jour = OFFRES["jour_collecte"].iloc[0]
     k4.metric("Dernière collecte", pd.to_datetime(jour).strftime("%d/%m/%Y"))
@@ -883,50 +888,71 @@ def etape_offres():
 
 st.markdown(s.bandeau(E.etape), unsafe_allow_html=True)
 def aide_score():
-    """Explication du score : sous le bandeau, a droite, sur les etapes 1 a 3.
-    L'accueil « Le marche » n'affiche pas de score : pas de bouton."""
+    """Explication du score, en mots simples : sous le bandeau, a droite,
+    sur les etapes 1 a 3. L'accueil « Le marche » n'a pas de score."""
     st.markdown(
         f"""
-**Score d'opportunité (sur 100) = 45 % tension + 35 % adéquation au CV + 20 % volume d'offres.**
+#### Le score en une phrase
+Plus le score est **haut** (sur 100), plus ce territoire semble **intéressant pour toi** :
+les employeurs y ont du mal à recruter, et leurs offres correspondent à ton CV.
 
-Le score classe les territoires selon des signaux de tension et l'adéquation au profil ;
-ce n'est pas une probabilité d'embauche.
+**Ce n'est pas une chance d'être embauché.** C'est un classement pour t'aider à choisir où chercher.
 
-- **Tension (relative)** : le marché informatique est saturé pour beaucoup de profils, surtout
-  débutants. Le score ne prétend donc pas qu'il « manque » des candidats : il compare chaque
-  territoire à la moyenne nationale et repère où la concurrence semble **plus faible qu'ailleurs**.
-  Un territoire dans la moyenne nationale a une tension de 50 %.
-- **Trois signaux d'offres, à poids égaux** : les offres encore en ligne après {c.SEUIL_JOURS} jours,
-  celles que France Travail signale comme manquant de candidats, et les postes **republiés** après
-  avoir été retirés (même employeur, même intitulé, même ville ; hors ESN, intérim et plateformes).
-  Chacun est lissé vers la moyenne nationale ({pct(REFS['persistance'])}, {pct(REFS['manque'])} et
-  {pct(REFS['republication'])} aujourd'hui), pour qu'une ville avec 3 offres ne passe pas devant
-  Paris par hasard.
-- **Pourquoi des poids égaux** : comparés à l'enquête officielle BMO 2026 sur 59 départements,
-  aucun des trois signaux ne s'est montré plus fiable que les autres (corrélations proches de 0).
-  Rien ne justifie d'en privilégier un.
-- **Repère BMO** : affiché sur chaque ville, mais **hors du score**. BMO mesure la difficulté
-  déclarée par les employeurs sur l'année, tous profils confondus, sans distinguer débutants et
-  expérimentés. Or le marché est saturé surtout pour les débutants : l'ajouter au score
-  avantagerait des territoires où un débutant n'est pas forcément plus recherché.
-- **Adéquation** : pour chaque offre, compétences demandées présentes dans ton CV ÷ compétences demandées.
-- **Volume** : nombre d'offres compatibles, sur une échelle logarithmique.
-- Seules comptent les offres qui partagent au moins {c.MIN_COMMUNES} compétences avec ton CV et qui
-  ne demandent pas plus de {c.ECART_NIVEAU} ans d'expérience au-delà de la tienne.
-- Toutes les offres comptent dans le calcul, même anciennes. L'écran des offres n'affiche par défaut
-  que celles de moins de {c.JOURS_RECENTS} jours.
+#### Il mélange trois choses
+
+| | Ce qu'on regarde | Poids |
+|---|---|---|
+| 🔥 **Difficulté à recruter** | les employeurs d'ici ont-ils plus de mal que la moyenne en France ? | 45 % |
+| 🎯 **Ton profil** | les offres demandent-elles tes compétences ? | 35 % |
+| 📦 **Nombre d'offres** | y a-t-il assez d'offres pour toi ? | 20 % |
+
+#### Comment on voit qu'un employeur a du mal à recruter
+On repère trois indices dans les offres :
+- l'offre est **encore en ligne après {c.SEUIL_JOURS} jours** ;
+- France Travail indique qu'il **manque des candidats** ;
+- l'employeur a **retiré puis remis** la même offre en ligne (les cabinets de recrutement ne comptent pas).
+
+Une ville **dans la moyenne** de la France a 50. Une ville **au-dessus** a plus de 50.
+
+#### Les offres prises en compte
+Seulement celles qui ont **au moins {c.MIN_COMMUNES} compétences** en commun avec ton CV, et qui ne
+demandent pas plus de **{c.ECART_NIVEAU} ans d'expérience** de plus que toi.
+
+#### Pour aller plus loin
+- **Petites villes** : avec très peu d'offres, un seul indice ferait grimper le score par hasard.
+  On rapproche donc leur résultat de la moyenne nationale tant qu'il y a peu d'offres.
+- **Les offres « autorisation de travail »** : pour embaucher certains candidats étrangers,
+  un employeur doit d'abord publier son offre pendant 3 semaines, alors qu'il a souvent déjà
+  son candidat. Ces offres ne font pas monter le score : elles sont retirées avant
+  {c.SEUIL_JOURS} jours, donc ne comptent pas comme « encore en ligne ». Et dans nos données,
+  on ne voit pas de pic d'offres retirées au bout de 3 semaines.
+- **Les trois indices comptent autant** : comparés à l'enquête officielle BMO 2026, aucun ne
+  s'est montré plus fiable que les autres.
+- **Le repère BMO** affiché sur chaque ville vient de cette enquête officielle (ce que les
+  employeurs déclarent). Il est montré à côté du score, mais n'entre pas dedans.
 """
     )
 
 
 if E.etape != 0:
-    _gauche, _, _droite = st.columns([1, 4, 1.4])
-    _gauche.button("◎ Le marché", on_click=aller, args=(0,), use_container_width=True)
-    with _droite.popover("Comment le score est calculé", use_container_width=True):
-        aide_score()
+    with st.container(key="navigation"):
+        _gauche, _, _droite = st.columns([1, 4, 1.4])
+        _gauche.button("◎ Le marché", on_click=aller, args=(0,), use_container_width=True)
+        with _droite.popover("Comment le score est calculé", use_container_width=True):
+            aide_score()
 
 def etape_marche():
     marche.page(OFFRES, BMO, REFS, POSTES, CATEGORIE_DU_POSTE, CATEGORIES, aller, REGIONS)
 
 
-{0: etape_marche, 1: etape_cv, 2: etape_territoires, 3: etape_offres}[E.etape]()
+# Chaque etape est dessinee dans son propre conteneur, avec une cle qui
+# change d'une etape a l'autre. Sans cela, en changeant d'etape, Streamlit
+# essayait de transformer les elements de l'ancienne page en ceux de la
+# nouvelle, et le navigateur plantait (« NotFoundError : removeChild »).
+# Avec une cle differente, l'ancienne page est retiree d'un bloc, puis la
+# nouvelle est construite.
+with st.container(key=f"page_etape_{E.etape}"):
+    {0: etape_marche, 1: etape_cv, 2: etape_territoires, 3: etape_offres}[E.etape]()
+
+# En dernier : le petit cadre invisible ne decale pas le haut de la page.
+s.bloquer_traduction()

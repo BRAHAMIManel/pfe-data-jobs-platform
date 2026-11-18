@@ -57,8 +57,18 @@ h1, h2, h3, .dn-titre {{
   color: {ENCRE};
   letter-spacing: -0.01em;
 }}
-.block-container {{ padding-top: 1.2rem; padding-left: 2.5rem; padding-right: 2.5rem; max-width: 100%; }}
-header[data-testid="stHeader"] {{ background: transparent; }}
+.block-container {{ padding-top: 1rem; padding-left: 2.5rem; padding-right: 2.5rem; max-width: 100%; }}
+/* La barre d'en-tete de Streamlit (vide ici) prenait ~60 px en haut de page. */
+header[data-testid="stHeader"] {{ display: none; }}
+/* Zone de depot du CV en francais (Streamlit n'affiche ces textes qu'en anglais). */
+[data-testid="stFileUploaderDropzone"] button [data-testid="stMarkdownContainer"] p {{ font-size: 0; }}
+[data-testid="stFileUploaderDropzone"] button [data-testid="stMarkdownContainer"] p::after {{
+  content: "Choisir mon CV"; font-size: 14px; }}
+[data-testid="stFileUploaderDropzoneInstructions"] span {{ font-size: 0; }}
+[data-testid="stFileUploaderDropzoneInstructions"] span::after {{
+  content: "Glisse ton fichier ici ou clique · PDF ou Word, 5 Mo maximum"; font-size: 14px; }}
+/* Le cadre invisible qui bloque la traduction ne doit prendre aucune place. */
+div[data-testid="stElementContainer"]:has(iframe[height="0"]) {{ position: absolute; height: 0; overflow: hidden; margin: 0; }}
 
 /* Bandeau */
 .dn-bandeau {{
@@ -154,6 +164,11 @@ header[data-testid="stHeader"] {{ background: transparent; }}
 div[data-testid="stMetric"] {{ background: {CARTE}; border: 1px solid {BORD}; border-radius: 16px;
   padding: 14px 16px; }}
 div[data-testid="stMetricValue"] {{ font-family: 'JetBrains Mono', monospace; color: {ENCRE}; }}
+/* Carte « signes de difficulte a recruter » (a cote des chiffres cles) */
+.dn-signaux {{ background: {CARTE}; border: 1px solid {BORD}; border-radius: 16px; padding: 12px 16px; }}
+.dn-signaux .titre {{ font-size: 14px; color: {ENCRE}; margin-bottom: 6px; }}
+.dn-signaux .l {{ display: flex; gap: 10px; align-items: baseline; font-size: 13px; color: {GRIS}; line-height: 1.5; }}
+.dn-signaux .l b {{ font: 600 18px 'JetBrains Mono', monospace; color: {ENCRE}; min-width: 48px; }}
 
 /* Puces */
 .dn-puces {{ display: flex; flex-wrap: wrap; gap: 6px; }}
