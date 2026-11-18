@@ -60,13 +60,17 @@ h1, h2, h3, .dn-titre {{
 .block-container {{ padding-top: 1rem; padding-left: 2.5rem; padding-right: 2.5rem; max-width: 100%; }}
 /* La barre d'en-tete de Streamlit (vide ici) prenait ~60 px en haut de page. */
 header[data-testid="stHeader"] {{ display: none; }}
-/* Zone de depot du CV en francais (Streamlit n'affiche ces textes qu'en anglais). */
-[data-testid="stFileUploaderDropzone"] button [data-testid="stMarkdownContainer"] p {{ font-size: 0; }}
-[data-testid="stFileUploaderDropzone"] button [data-testid="stMarkdownContainer"] p::after {{
+/* Zone de depot du CV en francais (Streamlit n'affiche ces textes qu'en anglais).
+   Marche avec l'ancienne et la nouvelle presentation de Streamlit. */
+[data-testid="stFileUploaderDropzoneInstructions"] > * {{ display: none; }}
+[data-testid="stFileUploaderDropzoneInstructions"]::after {{
+  content: "PDF ou Word, 5 Mo maximum"; font-size: 14px; opacity: .75; }}
+[data-testid="stFileUploaderDropzone"] button[data-testid="stBaseButton-secondary"] {{ font-size: 0; }}
+[data-testid="stFileUploaderDropzone"] button[data-testid="stBaseButton-secondary"] p {{ display: none; }}
+[data-testid="stFileUploaderDropzone"] button[data-testid="stBaseButton-secondary"] [data-testid="stIconMaterial"] {{
+  font-size: 18px; }}
+[data-testid="stFileUploaderDropzone"] button[data-testid="stBaseButton-secondary"]::after {{
   content: "Choisir mon CV"; font-size: 14px; }}
-[data-testid="stFileUploaderDropzoneInstructions"] span {{ font-size: 0; }}
-[data-testid="stFileUploaderDropzoneInstructions"] span::after {{
-  content: "Glisse ton fichier ici ou clique · PDF ou Word, 5 Mo maximum"; font-size: 14px; }}
 /* Le cadre invisible qui bloque la traduction ne doit prendre aucune place. */
 div[data-testid="stElementContainer"]:has(iframe[height="0"]) {{ position: absolute; height: 0; overflow: hidden; margin: 0; }}
 
