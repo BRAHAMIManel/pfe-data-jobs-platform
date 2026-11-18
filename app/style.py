@@ -11,6 +11,8 @@ pour les composants natifs de Streamlit.
 
 from html import escape
 
+import streamlit.components.v1 as components
+
 # Structure (theme sombre, esprit « data / detection »)
 FOND = "#0E1014"          # fond de page
 GRAPHITE = "#16181D"      # bandeau, blocs d'ouverture
@@ -222,6 +224,32 @@ div[data-testid="stMetricValue"] {{ font-family: 'JetBrains Mono', monospace; co
 # HTML ; app.py lit ?etape=1 au chargement. Sur l'accueil, aucune saisie
 # n'est encore faite : recharger la page ne fait rien perdre.
 LIEN_CV = "?etape=1"
+
+
+def bloquer_traduction():
+    """Empeche le navigateur de traduire la page.
+
+    Streamlit declare ses pages en anglais (lang="en"). Chrome propose alors
+    de « traduire » ce texte francais : la traduction remplace des morceaux
+    de la page sans que Streamlit le sache, et l'affichage plante avec
+    « NotFoundError : removeChild ». On declare donc la page en francais
+    et non traduisible. Le script tourne dans un petit cadre invisible,
+    servi par la meme adresse que l'application : il peut modifier la page.
+    """
+    components.html(
+        """<script>
+        const d = window.parent.document;
+        d.documentElement.lang = "fr";
+        d.documentElement.setAttribute("translate", "no");
+        d.documentElement.classList.add("notranslate");
+        if (!d.querySelector('meta[name="google"]')) {
+            const m = d.createElement("meta");
+            m.name = "google"; m.content = "notranslate";
+            d.head.appendChild(m);
+        }
+        </script>""",
+        height=0,
+    )
 
 
 def bouton_cv(texte="Déposer mon CV", discret=False):

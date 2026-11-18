@@ -11,7 +11,7 @@ affiche le resultat. Le CV n'est jamais enregistre.
 
 import os
 from html import escape
-from urllib.parse import quote
+from urllib.parse import quote, urlparse
 
 import pandas as pd
 import psycopg2
@@ -23,11 +23,15 @@ import style as s
 from cv import CVIlisible, analyser_cv
 from transformation import charger_categories, charger_dictionnaire, charger_postes
 
+# Page publique d'une offre sur France Travail (meme adresse que la collecte).
+URL_FRANCE_TRAVAIL = "https://candidat.francetravail.fr/offres/recherche/detail/{}"
+
 st.set_page_config(
     page_title="Détecteur de niches IT",
     layout="wide",
 )
 st.markdown(s.CSS, unsafe_allow_html=True)
+s.bloquer_traduction()
 
 POSTES = {f["id"]: f["libelle"] for f in charger_postes()}
 CATEGORIE_DU_POSTE = {f["id"]: f["categorie"] for f in charger_postes()}
@@ -658,15 +662,25 @@ def carte_offre(o):
         + quote(f"{o.intitule} {o.entreprise or ''}".strip())
         + "&location=" + quote(ville)
     )
+    # Lien principal : la page France Travail de l'offre. Elle reste en
+    # ligne tant que France Travail diffuse l'offre, ce qui correspond a ce
+    # que la collecte observe. Le lien du site partenaire (urlOrigine) peut
+    # expirer avant : il reste propose en second.
     voir = (
-        f'<a class="dn-bouton plein" href="{escape(o.url_offre)}" target="_blank" rel="noopener">Voir l\'offre</a>'
-        if o.url_offre else ""
+        f'<a class="dn-bouton plein" href="{escape(URL_FRANCE_TRAVAIL.format(quote(str(o.id_offre))))}" '
+        'target="_blank" rel="noopener">Voir l\'offre</a>'
     )
+    origine = ""
+    if o.url_offre and "francetravail.fr" not in (urlparse(o.url_offre).netloc or ""):
+        origine = (
+            f'<a class="dn-bouton vide" href="{escape(o.url_offre)}" target="_blank" '
+            'rel="noopener">Site d\'origine</a>'
+        )
     return (
         f'<div class="dn-carte dn-offre"><div style="min-width:0"><h4>{escape(o.intitule or "")}{age}{manque}</h4>'
         f'<div class="dn-meta">{meta}</div><div class="dn-puces">{puces}</div></div>'
         f'<div class="dn-cote"><div class="dn-match">{pct(o.adequation)}<small>{o.nb_communes}/{o.nb_requises} compétences</small></div>'
-        f'<div class="dn-boutons">{voir}<a class="dn-bouton vide" href="{linkedin}" target="_blank" rel="noopener">LinkedIn</a></div></div></div>'
+        f'<div class="dn-boutons">{voir}{origine}<a class="dn-bouton vide" href="{linkedin}" target="_blank" rel="noopener">LinkedIn</a></div></div></div>'
     )
 
 
@@ -797,6 +811,15 @@ def etape_offres():
         f'{c.JOURS_RECENTS} jours. D\'abord celles accessibles avec ton CV actuel, puis celles qui '
         "demandent une des compétences recommandées.</p>",
         unsafe_allow_html=True,
+    )
+    # Les offres affichees sont celles vues a la derniere collecte. Si la
+    # collecte date de plusieurs jours (PC eteint), certaines ont pu etre
+    # retirees depuis par l'employeur : on le dit au candidat.
+    vue_le = pd.to_datetime(offres_sel["derniere_collecte"].max())
+    ecart = (pd.Timestamp.today().normalize() - vue_le.normalize()).days
+    st.caption(
+        f"Offres vérifiées en ligne le {vue_le:%d/%m/%Y}"
+        + (f", il y a {mot(ecart, 'jour')} : certaines ont pu être pourvues depuis." if ecart >= 2 else ".")
     )
     if recentes.empty:
         st.markdown('<div class="dn-carte">Aucune offre récente ici. Regarde les offres plus anciennes ci-dessous.</div>', unsafe_allow_html=True)
