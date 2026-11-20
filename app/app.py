@@ -18,6 +18,7 @@ import psycopg2
 import streamlit as st
 
 import calculs as c
+import lettre
 import marche
 import style as s
 from cv import CVIlisible, analyser_cv
@@ -265,12 +266,12 @@ VERSION_DONNEES = (str(OFFRES["derniere_collecte"].max()), len(OFFRES))
 # toutes les regions et villes. Ces resultats ne dependent que du profil
 # (competences, experience, postes, contrat) : on les garde en memoire et
 # on ne recalcule que si le profil ou les donnees changent.
-@st.cache_data(max_entries=32, show_spinner=False)
+@st.cache_data(max_entries=8, show_spinner=False)
 def evaluer_cache(version, competences, annees):
     return c.evaluer_offres(OFFRES, list(competences), annees)
 
 
-@st.cache_data(max_entries=32, show_spinner="Calcul des scores…")
+@st.cache_data(max_entries=8, show_spinner="Calcul des scores…")
 def scores_cache(version, competences, annees, postes, contrat):
     evaluees = evaluer_cache(version, competences, annees)
     perim = c.perimetre(evaluees, list(postes), contrat, {"mode": "france"})
@@ -739,6 +740,50 @@ def groupes(offres):
             st.markdown(carte_offre(o), unsafe_allow_html=True)
 
 
+def bloc_lettre(offres):
+    """Modele de lettre de motivation pour une offre choisie. Sans IA :
+    phrases fixes remplies avec l'offre et le profil (scripts/lettre.py).
+    Rien n'est envoye a un service exterieur."""
+    if offres.empty:
+        return
+    st.markdown(
+        '<h2 style="margin:24px 0 0">Préparer ma lettre de motivation</h2>'
+        '<p class="dn-muted">Choisis une offre : un modèle de lettre est rempli avec l\'intitulé, '
+        "l'entreprise, la ville et tes compétences en commun. Complète les passages entre "
+        "crochets avec ton parcours. Rien n'est envoyé à un service extérieur.</p>",
+        unsafe_allow_html=True,
+    )
+    offres = offres.drop_duplicates("id_offre")
+    libelles = {
+        o.id_offre: f"{o.intitule} · {o.entreprise or 'entreprise non précisée'} · {o.ville_affichee or ''}"
+        for o in offres.itertuples()
+    }
+    choix = st.selectbox(
+        "Offre", [None] + list(libelles), format_func=lambda k: "Choisis une offre" if k is None else libelles[k],
+        key="lettre_offre",
+    )
+    if choix is None:
+        return
+    o = offres[offres["id_offre"] == choix].iloc[0]
+    texte = lettre.rediger(
+        {
+            "intitule": o["intitule"], "entreprise": o["entreprise"], "ville": o["ville_affichee"],
+            "type_contrat": o["type_contrat"], "alternance": bool(o.get("alternance", False)),
+            "communes": list(o["communes"]), "id_offre": o["id_offre"],
+        },
+        annees=E.annees,
+    )
+    # La cle depend de l'offre : changer d'offre recharge le modele.
+    texte = st.text_area("Ta lettre (tu peux la modifier ici)", texte, height=420, key=f"lettre_{choix}")
+    boutons = st.columns([1, 1, 3])
+    boutons[0].download_button(
+        "Télécharger (Word)", lettre.en_docx(texte), file_name=f"lettre_{choix}.docx",
+        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    )
+    boutons[1].download_button("Télécharger (texte)", texte.encode("utf-8"),
+                               file_name=f"lettre_{choix}.txt", mime="text/plain")
+
+
 def titre_selection(lignes):
     """'Paris (75)' pour une ville, 'Paris, Nanterre et 4 autres' sinon."""
     if len(lignes) == 1:
@@ -882,6 +927,9 @@ def etape_offres():
             f"{mot(ecartees, 'offre demande', 'offres demandent')} beaucoup plus d'expérience que la tienne : "
             "non affichée(s), non comptée(s) dans le score."
         )
+
+    # Seulement les offres que le candidat voit a l'ecran.
+    bloc_lettre(pd.concat([recentes, anciennes]) if E.anciennes else recentes)
 
 
 # ================================================================= page
